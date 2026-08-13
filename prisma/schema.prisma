@@ -1,0 +1,180 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model AdminUser {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+}
+
+model Page {
+  id             String   @id @default(cuid())
+  slug           String   @unique
+  title          String
+  status         String   @default("draft")
+  mode           String   @default("simulation")
+  videoTitle     String   @default("")
+  channelName    String   @default("")
+  channelHandle  String   @default("")
+  channelAvatar  String   @default("AT")
+  description    String   @default("")
+  brandName      String   @default("AutoFintech")
+  vturbPlayerId  String   @default("")
+  vturbScriptUrl String   @default("")
+  thumbnailUrl   String   @default("")
+  language       String   @default("pt-BR")
+  viewersBase    Int      @default(2284)
+  chatNote       String   @default("Use o chat para tirar dúvidas. Mercado financeiro envolve risco.")
+  aiInstructions String   @default("")
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  agent         Agent?
+  knowledgeBase KnowledgeBase?
+  settings      PageSettings?
+  links         AgentLink[]
+  actions       AgentAction[]
+  transcript    TranscriptSegment[]
+  commentEvents CommentEvent[]
+  comments      Comment[]
+  visitors      Visitor[]
+}
+
+model Agent {
+  id          String  @id @default(cuid())
+  pageId      String  @unique
+  page        Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name        String  @default("Suporte")
+  avatar      String  @default("SP")
+  personality String  @default("técnico/comercial")
+  goal        String  @default("responder dúvidas")
+  enabled     Boolean @default(true)
+}
+
+model KnowledgeBase {
+  id      String @id @default(cuid())
+  pageId  String @unique
+  page    Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  content String @default("")
+}
+
+model AgentLink {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  label  String
+  url    String
+}
+
+model AgentAction {
+  id     String @id @default(cuid())
+  pageId String
+  page   Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  key    String
+  label  String
+  url    String
+}
+
+model TranscriptSegment {
+  id           String @id @default(cuid())
+  pageId       String
+  page         Page   @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  timestampSec Int
+  text         String
+
+  @@index([pageId, timestampSec])
+}
+
+model CommentEvent {
+  id           String   @id @default(cuid())
+  pageId       String
+  page         Page     @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  timestampSec Int
+  commentText  String
+  commentType  String   @default("comment")
+  authorType   String   @default("ai")
+  authorName   String   @default("")
+  authorColor  String   @default("#1e6b45")
+  priority     Int      @default(0)
+  isSuperchat  Boolean  @default(false)
+  superAmount  String   @default("")
+  createdAt    DateTime @default(now())
+
+  @@index([pageId, timestampSec])
+}
+
+model PageSettings {
+  id                   String  @id @default(cuid())
+  pageId               String  @unique
+  page                 Page    @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  aiEnabled            Boolean @default(true)
+  autoGenerateEnabled  Boolean @default(true)
+  agentReplyEnabled    Boolean @default(true)
+  maxMessagesPerMinute Int     @default(6)
+  minIntervalSec       Int     @default(8)
+  creativity           Float   @default(0.7)
+  allowedCommentTypes  String  @default("question,objection,benefit,testimonial,filler")
+  openaiModel          String  @default("gpt-4o-mini")
+  temperature          Float   @default(0.7)
+  dailyApiLimit        Int     @default(100)
+}
+
+model Visitor {
+  id         String     @id @default(cuid())
+  pageId     String
+  page       Page       @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  name       String
+  email      String
+  sessionId  String     @unique
+  leadStatus String     @default("new")
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  comments   Comment[]
+  notes      LeadNote[]
+
+  @@index([pageId, email])
+}
+
+model Comment {
+  id             String          @id @default(cuid())
+  pageId         String
+  page           Page            @relation(fields: [pageId], references: [id], onDelete: Cascade)
+  visitorId      String?
+  visitor        Visitor?        @relation(fields: [visitorId], references: [id], onDelete: SetNull)
+  videoTimestamp Int             @default(0)
+  text           String
+  classification String          @default("NORMAL")
+  visibility     String          @default("public")
+  authorType     String          @default("user")
+  authorName     String          @default("")
+  createdAt      DateTime        @default(now())
+  updatedAt      DateTime        @updatedAt
+  moderationLogs ModerationLog[]
+
+  @@index([pageId, createdAt])
+  @@index([pageId, videoTimestamp])
+}
+
+model ModerationLog {
+  id        String   @id @default(cuid())
+  commentId String
+  comment   Comment  @relation(fields: [commentId], references: [id], onDelete: Cascade)
+  action    String
+  reason    String
+  createdAt DateTime @default(now())
+}
+
+model LeadNote {
+  id        String   @id @default(cuid())
+  visitorId String
+  visitor   Visitor  @relation(fields: [visitorId], references: [id], onDelete: Cascade)
+  text      String
+  createdAt DateTime @default(now())
+}

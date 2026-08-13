@@ -1,0 +1,2 @@
+[start]
+cmd = "mkdir -p /app/data && npx prisma migrate deploy && npm run start"
