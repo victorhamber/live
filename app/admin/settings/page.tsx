@@ -6,18 +6,22 @@ export default function SettingsPage() {
   const [openaiApiKey, setOpenaiApiKey] = useState("");
   const [openaiModel, setOpenaiModel] = useState("gpt-4o-mini");
   const [hasKey, setHasKey] = useState(false);
+  const [logoUrl, setLogoUrl] = useState("");
+  const [logoFile, setLogoFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
+  async function load() {
+    const res = await fetch("/api/admin/settings");
+    const data = await res.json();
+    setOpenaiApiKey(data.openaiApiKey || "");
+    setOpenaiModel(data.openaiModel || "gpt-4o-mini");
+    setHasKey(Boolean(data.hasKey));
+    setLogoUrl(data.logoUrl || "");
+  }
+
   useEffect(() => {
-    fetch("/api/admin/settings")
-      .then((r) => r.json())
-      .then((data) => {
-        setOpenaiApiKey(data.openaiApiKey || "");
-        setOpenaiModel(data.openaiModel || "gpt-4o-mini");
-        setHasKey(Boolean(data.hasKey));
-      })
-      .catch(() => setMessage("Não foi possível carregar as configurações"));
+    load().catch(() => setMessage("Não foi possível carregar as configurações"));
   }, []);
 
   async function onSubmit(e: FormEvent) {
@@ -30,14 +34,30 @@ export default function SettingsPage() {
       body: JSON.stringify({ openaiApiKey, openaiModel }),
     });
     const data = await res.json();
-    setSaving(false);
     if (!res.ok) {
+      setSaving(false);
       setMessage(data.error || "Erro ao salvar");
       return;
     }
     setOpenaiApiKey(data.openaiApiKey || "");
     setOpenaiModel(data.openaiModel || "gpt-4o-mini");
     setHasKey(Boolean(data.hasKey));
+
+    if (logoFile) {
+      const form = new FormData();
+      form.append("logo", logoFile);
+      const upload = await fetch("/api/admin/settings/logo", { method: "POST", body: form });
+      const uploaded = await upload.json();
+      if (!upload.ok) {
+        setSaving(false);
+        setMessage(uploaded.error || "Erro ao enviar a logo");
+        return;
+      }
+      setLogoFile(null);
+    }
+
+    await load();
+    setSaving(false);
     setMessage("Configurações salvas");
   }
 
@@ -45,9 +65,27 @@ export default function SettingsPage() {
     <div className="max-w-lg">
       <h1 className="text-2xl font-semibold">Configurações</h1>
       <p className="mt-1 text-sm text-[#9aa0a6]">
-        A chave da OpenAI fica no banco e só é usada no servidor. Não precisa colocar no EasyPanel.
+        Logo do site, ícone da aba do navegador e chave da OpenAI.
       </p>
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
+        <label className="grid gap-2 text-sm">
+          Logo do site
+          <div className="flex items-center gap-3">
+            {logoUrl ? (
+              <img src={logoUrl} alt="Logo" className="h-12 w-12 rounded-full object-cover bg-[#0f1115]" />
+            ) : (
+              <div className="grid h-12 w-12 place-items-center rounded-full bg-[#0f1115] text-xs text-[#9aa0a6]">
+                —
+              </div>
+            )}
+            <input
+              type="file"
+              accept="image/png,image/jpeg,image/webp,image/svg+xml,image/x-icon,.ico"
+              onChange={(e) => setLogoFile(e.target.files?.[0] || null)}
+            />
+          </div>
+          <span className="text-xs text-[#9aa0a6]">PNG, JPG, WEBP, SVG ou ICO. Até 2 MB. Aparece na live e na aba do navegador.</span>
+        </label>
         <label className="grid gap-1 text-sm">
           Chave da API OpenAI
           <input

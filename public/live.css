@@ -25,6 +25,10 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   z-index: 20;
 }
 .yt-logo { color: #fff; text-decoration: none; font-weight: 700; font-size: 18px; }
+.topbar-logo, .channel-logo {
+  width: 32px; height: 32px; border-radius: 50%; object-fit: cover; flex-shrink: 0;
+  background: #111;
+}
 .topbar-avatar, .channel-avatar, .chat-input-avatar, .msg-avatar {
   width: 32px; height: 32px; border-radius: 50%;
   display: grid; place-items: center; font-size: 12px; font-weight: 700;

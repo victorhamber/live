@@ -19,6 +19,8 @@ export async function GET() {
     openaiApiKey: maskApiKey(settings.openaiApiKey),
     openaiModel: settings.openaiModel,
     hasKey: Boolean(settings.openaiApiKey.trim()),
+    hasLogo: Boolean(settings.logoMimeType),
+    logoUrl: settings.logoMimeType ? `/api/branding/logo?v=${settings.updatedAt.getTime()}` : "",
   });
 }
 

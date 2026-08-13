@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { initials } from "@/lib/utils";
+import { getAppSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
 
@@ -9,7 +10,14 @@ type Props = { params: Promise<{ slug: string }> };
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
   const page = await db.page.findUnique({ where: { slug } });
-  return { title: page?.videoTitle || page?.title || "Ao vivo" };
+  const settings = await getAppSettings();
+  const logo = settings.logoMimeType
+    ? `/api/branding/logo?v=${settings.updatedAt.getTime()}`
+    : undefined;
+  return {
+    title: page?.videoTitle || page?.title || "Ao vivo",
+    icons: logo ? { icon: [{ url: logo, type: settings.logoMimeType }] } : undefined,
+  };
 }
 
 export default async function LivePage({ params }: Props) {
@@ -19,6 +27,11 @@ export default async function LivePage({ params }: Props) {
     include: { agent: true },
   });
   if (!page || page.status !== "published") notFound();
+
+  const settings = await getAppSettings();
+  const logoUrl = settings.logoMimeType
+    ? `/api/branding/logo?v=${settings.updatedAt.getTime()}`
+    : "";
 
   const config = {
     slug: page.slug,
@@ -36,7 +49,11 @@ export default async function LivePage({ params }: Props) {
           {page.brandName}
         </a>
         <div className="topbar-right">
-          <div className="topbar-avatar">{page.channelAvatar || "AT"}</div>
+          {logoUrl ? (
+            <img className="topbar-logo" src={logoUrl} alt={page.brandName} />
+          ) : (
+            <div className="topbar-avatar">{page.channelAvatar || "AT"}</div>
+          )}
         </div>
       </div>
 
@@ -69,7 +86,11 @@ export default async function LivePage({ params }: Props) {
           <div className="video-info">
             <div className="video-title">{page.videoTitle || page.title}</div>
             <div className="channel-row">
-              <div className="channel-avatar">{page.channelAvatar || "AT"}</div>
+              {logoUrl ? (
+                <img className="channel-logo" src={logoUrl} alt="" />
+              ) : (
+                <div className="channel-avatar">{page.channelAvatar || "AT"}</div>
+              )}
               <div>
                 <div className="channel-name">{page.channelName || page.brandName}</div>
                 <div className="channel-subs">{page.channelHandle || "Transmissão ao vivo"}</div>

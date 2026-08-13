@@ -180,8 +180,9 @@ model LeadNote {
 }
 
 model AppSettings {
-  id           String @id @default("default")
-  openaiApiKey String @default("")
-  openaiModel  String @default("gpt-4o-mini")
+  id           String   @id @default("default")
+  openaiApiKey String   @default("")
+  openaiModel  String   @default("gpt-4o-mini")
+  logoMimeType String   @default("")
   updatedAt    DateTime @updatedAt
 }
