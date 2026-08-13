@@ -6,5 +6,5 @@ if [ -z "$DATABASE_URL" ]; then
 fi
 
 mkdir -p /app/data
-node node_modules/prisma/build/index.js migrate deploy --schema=./prisma/schema.prisma
+node ./scripts/migrate.cjs
 exec node server.js
