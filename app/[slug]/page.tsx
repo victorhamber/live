@@ -43,14 +43,16 @@ export default async function LivePage({ params }: Props) {
 
   return (
     <>
-      <link rel="stylesheet" href="/live.css" />
+      <link rel="stylesheet" href="/live.css?v=3" />
       <div className="topbar">
         <a className="yt-logo" href="#">
           {page.brandName}
         </a>
         <div className="topbar-right">
           {logoUrl ? (
-            <img className="topbar-logo" src={logoUrl} alt={page.brandName} />
+            <span className="site-logo">
+              <img src={logoUrl} alt={page.brandName} width={32} height={32} />
+            </span>
           ) : (
             <div className="topbar-avatar">{page.channelAvatar || "AT"}</div>
           )}
@@ -87,7 +89,9 @@ export default async function LivePage({ params }: Props) {
             <div className="video-title">{page.videoTitle || page.title}</div>
             <div className="channel-row">
               {logoUrl ? (
-                <img className="channel-logo" src={logoUrl} alt="" />
+                <span className="site-logo">
+                  <img src={logoUrl} alt="" width={32} height={32} />
+                </span>
               ) : (
                 <div className="channel-avatar">{page.channelAvatar || "AT"}</div>
               )}

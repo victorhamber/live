@@ -72,7 +72,9 @@ export default function SettingsPage() {
           Logo do site
           <div className="flex items-center gap-3">
             {logoUrl ? (
-              <img src={logoUrl} alt="Logo" className="h-12 w-12 rounded-full object-cover bg-[#0f1115]" />
+              <span className="inline-block h-12 w-12 overflow-hidden rounded-full bg-[#0f1115]">
+                <img src={logoUrl} alt="Logo" className="h-12 w-12 object-cover" />
+              </span>
             ) : (
               <div className="grid h-12 w-12 place-items-center rounded-full bg-[#0f1115] text-xs text-[#9aa0a6]">
                 —
