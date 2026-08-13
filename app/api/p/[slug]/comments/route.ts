@@ -5,6 +5,7 @@ import { jsonError } from "@/lib/utils";
 import { readVisitorSessionId, setVisitorSessionId } from "@/lib/session";
 import { inferLeadStatus, looksLikeQuestion, moderateByRules } from "@/lib/moderation";
 import { classifyComment, maybeReplyAsAgent } from "@/lib/openai";
+import { getAppSettings } from "@/lib/settings";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -61,15 +62,18 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   let classification: string = rule.classification;
   let visibility = rule.restricted ? "author_only" : "public";
 
-  if (!rule.restricted && page.settings?.aiEnabled && process.env.OPENAI_API_KEY) {
-    try {
-      const aiClass = await classifyComment(text, page.settings.openaiModel);
-      classification = aiClass;
-      if (["SPAM", "OFENSIVO", "NEGATIVO"].includes(aiClass)) {
-        visibility = "author_only";
+  if (!rule.restricted && page.settings?.aiEnabled) {
+    const appSettings = await getAppSettings();
+    if (appSettings.openaiApiKey.trim()) {
+      try {
+        const aiClass = await classifyComment(text, page.settings.openaiModel);
+        classification = aiClass;
+        if (["SPAM", "OFENSIVO", "NEGATIVO"].includes(aiClass)) {
+          visibility = "author_only";
+        }
+      } catch {
+        /* regras já cobrem o básico */
       }
-    } catch {
-      /* regras já cobrem o básico */
     }
   }
 

@@ -178,3 +178,10 @@ model LeadNote {
   text      String
   createdAt DateTime @default(now())
 }
+
+model AppSettings {
+  id           String @id @default("default")
+  openaiApiKey String @default("")
+  openaiModel  String @default("gpt-4o-mini")
+  updatedAt    DateTime @updatedAt
+}

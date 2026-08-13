@@ -104,7 +104,7 @@ export async function PUT(request: NextRequest, ctx: Ctx) {
             minIntervalSec: Number(body.minIntervalSec ?? 8),
             creativity: Number(body.creativity ?? 0.7),
             allowedCommentTypes: body.allowedCommentTypes || "question,objection,benefit,testimonial,filler",
-            openaiModel: body.openaiModel || process.env.OPENAI_MODEL || "gpt-4o-mini",
+            openaiModel: body.openaiModel || "gpt-4o-mini",
             temperature: Number(body.temperature ?? 0.7),
             dailyApiLimit: Number(body.dailyApiLimit ?? 100),
           },

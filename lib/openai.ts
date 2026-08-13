@@ -1,15 +1,21 @@
 import OpenAI from "openai";
 import { db } from "./db";
 import { colorForName } from "./utils";
+import { getAppSettings } from "./settings";
 
-function client() {
-  const key = process.env.OPENAI_API_KEY;
-  if (!key) return null;
-  return new OpenAI({ apiKey: key });
+async function getOpenAiConfig() {
+  const settings = await getAppSettings();
+  const key = settings.openaiApiKey.trim();
+  return {
+    key,
+    model: settings.openaiModel.trim() || "gpt-4o-mini",
+    client: key ? new OpenAI({ apiKey: key }) : null,
+  };
 }
 
-export function defaultModel() {
-  return process.env.OPENAI_MODEL || "gpt-4o-mini";
+export async function defaultModel() {
+  const { model } = await getOpenAiConfig();
+  return model;
 }
 
 const FAKE_NAMES = [
@@ -51,9 +57,9 @@ export async function generateTimedComments(input: {
   temperature: number;
   model: string;
 }): Promise<GeneratedEvent[]> {
-  const openai = client();
+  const { client: openai, model: configuredModel } = await getOpenAiConfig();
   if (!openai) {
-    throw new Error("OPENAI_API_KEY não configurada");
+    throw new Error("Configure a chave da OpenAI em Configurações");
   }
 
   const transcriptBlock = input.transcript
@@ -62,7 +68,7 @@ export async function generateTimedComments(input: {
     .join("\n");
 
   const completion = await openai.chat.completions.create({
-    model: input.model || defaultModel(),
+    model: input.model || configuredModel,
     temperature: input.temperature ?? 0.7,
     response_format: { type: "json_object" },
     messages: [
@@ -117,11 +123,11 @@ ${transcriptBlock || "(vazia)"}`,
 }
 
 export async function classifyComment(text: string, model: string): Promise<string> {
-  const openai = client();
+  const { client: openai, model: configuredModel } = await getOpenAiConfig();
   if (!openai) return "NORMAL";
 
   const completion = await openai.chat.completions.create({
-    model: model || defaultModel(),
+    model: model || configuredModel,
     temperature: 0,
     messages: [
       {
@@ -151,14 +157,14 @@ export async function agentReply(input: {
   model: string;
   temperature: number;
 }): Promise<string | null> {
-  const openai = client();
+  const { client: openai, model: configuredModel } = await getOpenAiConfig();
   if (!openai) return null;
 
   const links = input.links.map((l) => `${l.label}: ${l.url}`).join("\n") || "(nenhum)";
   const actions = input.actions.map((a) => `/${a.key} → ${a.label}: ${a.url}`).join("\n") || "(nenhuma)";
 
   const completion = await openai.chat.completions.create({
-    model: input.model || defaultModel(),
+    model: input.model || configuredModel,
     temperature: Math.min(input.temperature ?? 0.4, 0.5),
     messages: [
       {
@@ -207,7 +213,8 @@ export async function maybeReplyAsAgent(opts: {
   });
   if (!page?.agent?.enabled) return null;
   if (!page.settings?.agentReplyEnabled || !page.settings.aiEnabled) return null;
-  if (!process.env.OPENAI_API_KEY) return null;
+  const { key } = await getOpenAiConfig();
+  if (!key) return null;
 
   const should =
     ["DUVIDA", "OBJECAO"].includes(opts.classification) ||
