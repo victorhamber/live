@@ -2,11 +2,14 @@
   const cfg = window.__LIVE__ || {};
   const MAX = 90;
   const seen = new Set();
+  const pendingMine = new Set();
   let viewers = Number(cfg.viewersBase || 2284);
   let visitor = null;
   let pendingText = "";
   let elapsedFallback = 0;
   let descExpanded = true;
+  let lastFeedT = -1;
+  let sending = false;
 
   const $ = (id) => document.getElementById(id);
   const initials = (name) =>
@@ -108,6 +111,11 @@
     items.forEach((item) => {
       const key = item.kind + ":" + item.id;
       if (seen.has(key)) return;
+      if (item.mine && pendingMine.has(item.text)) {
+        pendingMine.delete(item.text);
+        seen.add(key);
+        return;
+      }
       seen.add(key);
       appendMsg(
         {
@@ -125,9 +133,17 @@
   }
 
   async function pollFeed() {
+    if (document.hidden) return;
     const t = Math.floor(getVideoTime());
+    const from = lastFeedT >= 0 ? lastFeedT : "";
     try {
-      const res = await fetch("/api/p/" + encodeURIComponent(cfg.slug) + "/feed?t=" + t);
+      const url =
+        "/api/p/" +
+        encodeURIComponent(cfg.slug) +
+        "/feed?t=" +
+        t +
+        (from === "" ? "" : "&from=" + from);
+      const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
       if (data.visitor) {
@@ -138,7 +154,16 @@
         .concat(data.events || [], data.comments || [])
         .sort((a, b) => a.timestampSec - b.timestampSec);
       ingest(merged);
+      lastFeedT = t;
     } catch (e) {}
+  }
+
+  function burstPoll() {
+    let n = 0;
+    const id = setInterval(() => {
+      pollFeed();
+      if (++n >= 8) clearInterval(id);
+    }, 700);
   }
 
   function openIdentity(text) {
@@ -151,13 +176,24 @@
     $("identity-modal").hidden = true;
   }
 
-  let sending = false;
-
   function clearInput() {
     const input = $("chat-input");
     if (!input) return;
     input.value = "";
     toggleSend(input);
+  }
+
+  function paintMine(text) {
+    pendingMine.add(text);
+    appendMsg(
+      {
+        name: visitor.name,
+        text,
+        authorType: "user",
+        mine: true,
+      },
+      true
+    );
   }
 
   async function sendUserMsg() {
@@ -170,6 +206,8 @@
       return;
     }
     sending = true;
+    clearInput();
+    paintMine(text);
     try {
       await postComment(text);
     } finally {
@@ -193,6 +231,7 @@
     });
     const data = await res.json().catch(() => ({}));
     if (!res.ok) {
+      pendingMine.delete(text);
       if (res.status === 401) {
         openIdentity(text);
         return;
@@ -200,11 +239,11 @@
       showToast(data.error || "Não foi possível enviar");
       return;
     }
-    if (data.comment) ingest([{ ...data.comment, kind: "comment" }]);
-    if (data.agent) {
-      setTimeout(() => ingest([{ ...data.agent, kind: "comment" }]), 900);
+    if (data.comment && data.comment.id) {
+      seen.add("comment:" + data.comment.id);
+      pendingMine.delete(text);
     }
-    clearInput();
+    burstPoll();
     return true;
   }
 
@@ -245,6 +284,7 @@
       clearInput();
       if (text) {
         sending = true;
+        paintMine(text);
         try {
           await postComment(text, visitor);
         } finally {
@@ -256,7 +296,7 @@
     setInterval(() => {
       elapsedFallback += 1;
     }, 1000);
-    setInterval(pollFeed, 2000);
+    setInterval(pollFeed, 3000);
     pollFeed();
     fluctuateViewers();
   }

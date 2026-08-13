@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError } from "@/lib/utils";
 import { db } from "@/lib/db";
-import { getAppSettings } from "@/lib/settings";
+import { getAppSettings, invalidateAppSettings } from "@/lib/settings";
 import { saveSiteLogo } from "@/lib/branding";
 
 const ALLOWED: Record<string, string> = {
@@ -42,6 +42,7 @@ export async function POST(request: NextRequest) {
     where: { id: current.id },
     data: { logoMimeType: mime },
   });
+  invalidateAppSettings();
 
   return Response.json({ ok: true, hasLogo: true });
 }

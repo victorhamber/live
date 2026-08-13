@@ -9,7 +9,7 @@ async function getOpenAiConfig() {
   return {
     key,
     model: settings.openaiModel.trim() || "gpt-4o-mini",
-    client: key ? new OpenAI({ apiKey: key }) : null,
+    client: key ? new OpenAI({ apiKey: key, timeout: 8_000, maxRetries: 0 }) : null,
   };
 }
 

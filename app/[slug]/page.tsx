@@ -166,7 +166,7 @@ export default async function LivePage({ params }: Props) {
           __html: `window.__LIVE__=${JSON.stringify(config)};`,
         }}
       />
-      <script src="/live.js?v=5" defer />
+      <script src="/live.js?v=6" defer />
     </>
   );
 }

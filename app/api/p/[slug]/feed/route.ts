@@ -5,41 +5,80 @@ import { readVisitorSessionId } from "@/lib/session";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
+type CachedPage = { id: string; status: string; mode: string; at: number };
+const pageCache = new Map<string, CachedPage>();
+const PAGE_TTL_MS = 20_000;
+
+async function getPublishedPage(slug: string) {
+  const hit = pageCache.get(slug);
+  if (hit && Date.now() - hit.at < PAGE_TTL_MS) return hit;
+  const page = await db.page.findUnique({
+    where: { slug },
+    select: { id: true, status: true, mode: true },
+  });
+  if (!page) return null;
+  const cached = { ...page, at: Date.now() };
+  pageCache.set(slug, cached);
+  return cached;
+}
+
 export async function GET(request: NextRequest, ctx: Ctx) {
   const { slug } = await ctx.params;
   const t = Math.max(0, Number(request.nextUrl.searchParams.get("t") || 0));
-  const page = await db.page.findUnique({ where: { slug } });
+  const fromRaw = request.nextUrl.searchParams.get("from");
+  const fromT = fromRaw != null && fromRaw !== "" ? Number(fromRaw) : NaN;
+  const incremental = Number.isFinite(fromT) && fromT >= 0;
+
+  const page = await getPublishedPage(slug);
   if (!page || page.status !== "published") return jsonError("Página não encontrada", 404);
 
   const sessionId = await readVisitorSessionId();
-  const visitor = sessionId
-    ? await db.visitor.findFirst({ where: { pageId: page.id, sessionId } })
-    : null;
+  const visitor = sessionId ? await db.visitor.findUnique({ where: { sessionId } }) : null;
+  const visitorOnPage = visitor && visitor.pageId === page.id ? visitor : null;
+
+  const timeFilter = incremental
+    ? { gt: fromT, lte: t }
+    : { lte: t };
 
   const events =
     page.mode === "simulation"
       ? await db.commentEvent.findMany({
-          where: { pageId: page.id, timestampSec: { lte: t } },
-          orderBy: { timestampSec: "asc" },
+          where: { pageId: page.id, timestampSec: timeFilter },
+          orderBy: { timestampSec: incremental ? "asc" : "desc" },
+          take: incremental ? 40 : 80,
         })
       : [];
+
+  const visibilityOr = [
+    { visibility: "public" },
+    visitorOnPage ? { visibility: "author_only", visitorId: visitorOnPage.id } : undefined,
+  ].filter(Boolean) as object[];
 
   const comments = await db.comment.findMany({
     where: {
       pageId: page.id,
-      videoTimestamp: { lte: t },
-      OR: [
-        { visibility: "public" },
-        visitor ? { visibility: "author_only", visitorId: visitor.id } : undefined,
-      ].filter(Boolean) as object[],
+      AND: [
+        incremental
+          ? {
+              OR: [
+                { videoTimestamp: timeFilter },
+                { createdAt: { gte: new Date(Date.now() - 20_000) } },
+              ],
+            }
+          : { videoTimestamp: timeFilter },
+        { OR: visibilityOr },
+      ],
     },
     include: { visitor: { select: { name: true } } },
-    orderBy: { videoTimestamp: "asc" },
-    take: 250,
+    orderBy: { videoTimestamp: incremental ? "asc" : "desc" },
+    take: incremental ? 40 : 80,
   });
 
+  const eventRows = incremental ? events : [...events].reverse();
+  const commentRows = incremental ? comments : [...comments].reverse();
+
   return Response.json({
-    events: events.map((e) => ({
+    events: eventRows.map((e) => ({
       id: e.id,
       kind: "event",
       timestampSec: e.timestampSec,
@@ -51,15 +90,15 @@ export async function GET(request: NextRequest, ctx: Ctx) {
       superAmount: e.superAmount,
       authorType: e.authorType,
     })),
-    comments: comments.map((c) => ({
+    comments: commentRows.map((c) => ({
       id: c.id,
       kind: "comment",
       timestampSec: c.videoTimestamp,
       text: c.text,
       name: c.authorType === "agent" ? c.authorName : c.visitor?.name || c.authorName || "Visitante",
       authorType: c.authorType,
-      mine: visitor ? c.visitorId === visitor.id : false,
+      mine: visitorOnPage ? c.visitorId === visitorOnPage.id : false,
     })),
-    visitor: visitor ? { name: visitor.name, email: visitor.email } : null,
+    visitor: visitorOnPage ? { name: visitorOnPage.name, email: visitorOnPage.email } : null,
   });
 }

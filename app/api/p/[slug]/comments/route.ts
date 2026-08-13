@@ -1,5 +1,5 @@
 import { randomUUID } from "crypto";
-import { NextRequest } from "next/server";
+import { after, NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
 import { readVisitorSessionId, setVisitorSessionId } from "@/lib/session";
@@ -11,6 +11,75 @@ type Ctx = { params: Promise<{ slug: string }> };
 
 function validEmail(email: string) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+async function refineInBackground(opts: {
+  commentId: string;
+  pageId: string;
+  visitorId: string;
+  visitorName: string;
+  text: string;
+  videoTimestamp: number;
+  classification: string;
+  visibility: string;
+  aiEnabled: boolean;
+  openaiModel: string;
+  leadStatus: string;
+}) {
+  let classification = opts.classification;
+  let visibility = opts.visibility;
+
+  if (!opts.aiEnabled || visibility !== "public") return;
+
+  const appSettings = await getAppSettings();
+  if (!appSettings.openaiApiKey.trim()) return;
+
+  try {
+    const aiClass = await classifyComment(opts.text, opts.openaiModel);
+    classification = aiClass;
+    if (["SPAM", "OFENSIVO", "NEGATIVO"].includes(aiClass)) {
+      visibility = "author_only";
+    }
+  } catch {
+    /* regras já cobrem o básico */
+  }
+
+  if (looksLikeQuestion(opts.text) && classification === "NORMAL") {
+    classification = "DUVIDA";
+  }
+
+  if (classification !== opts.classification || visibility !== opts.visibility) {
+    await db.comment.update({
+      where: { id: opts.commentId },
+      data: { classification, visibility },
+    });
+    await db.moderationLog.create({
+      data: {
+        commentId: opts.commentId,
+        action: visibility,
+        reason: classification,
+      },
+    });
+  }
+
+  const nextStatus = inferLeadStatus(classification, opts.text);
+  if (nextStatus && opts.leadStatus === "new") {
+    await db.visitor.update({ where: { id: opts.visitorId }, data: { leadStatus: nextStatus } });
+  }
+
+  if (visibility !== "public") return;
+
+  try {
+    await maybeReplyAsAgent({
+      pageId: opts.pageId,
+      visitorName: opts.visitorName,
+      text: opts.text,
+      videoTimestamp: opts.videoTimestamp,
+      classification,
+    });
+  } catch {
+    /* o feed pega a resposta quando existir */
+  }
 }
 
 export async function POST(request: NextRequest, ctx: Ctx) {
@@ -31,8 +100,9 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 
   let sessionId = await readVisitorSessionId();
   let visitor = sessionId
-    ? await db.visitor.findFirst({ where: { pageId: page.id, sessionId } })
+    ? await db.visitor.findUnique({ where: { sessionId } })
     : null;
+  if (visitor && visitor.pageId !== page.id) visitor = null;
 
   if (!visitor) {
     if (!name || !validEmail(email)) {
@@ -49,6 +119,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     where: { visitorId: visitor.id },
     orderBy: { createdAt: "desc" },
     take: 8,
+    select: { text: true, createdAt: true },
   });
 
   const flood = recent[0] && Date.now() - recent[0].createdAt.getTime() < 2500;
@@ -61,21 +132,6 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 
   let classification: string = rule.classification;
   let visibility = rule.restricted ? "author_only" : "public";
-
-  if (!rule.restricted && page.settings?.aiEnabled) {
-    const appSettings = await getAppSettings();
-    if (appSettings.openaiApiKey.trim()) {
-      try {
-        const aiClass = await classifyComment(text, page.settings.openaiModel);
-        classification = aiClass;
-        if (["SPAM", "OFENSIVO", "NEGATIVO"].includes(aiClass)) {
-          visibility = "author_only";
-        }
-      } catch {
-        /* regras já cobrem o básico */
-      }
-    }
-  }
 
   if (looksLikeQuestion(text) && classification === "NORMAL") {
     classification = "DUVIDA";
@@ -103,24 +159,29 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   });
 
   const nextStatus = inferLeadStatus(classification, text);
-  if (nextStatus && visitor.leadStatus === "new") {
+  let leadStatus = visitor.leadStatus;
+  if (nextStatus && leadStatus === "new") {
     await db.visitor.update({ where: { id: visitor.id }, data: { leadStatus: nextStatus } });
+    leadStatus = nextStatus;
   }
 
-  let agent = null;
-  if (visibility === "public") {
-    try {
-      agent = await maybeReplyAsAgent({
-        pageId: page.id,
-        visitorName: visitor.name,
-        text,
-        videoTimestamp,
-        classification,
-      });
-    } catch {
-      agent = null;
-    }
-  }
+  const visitorId = visitor.id;
+  const visitorName = visitor.name;
+  after(() =>
+    refineInBackground({
+      commentId: comment.id,
+      pageId: page.id,
+      visitorId,
+      visitorName,
+      text,
+      videoTimestamp,
+      classification,
+      visibility,
+      aiEnabled: Boolean(page.settings?.aiEnabled),
+      openaiModel: page.settings?.openaiModel || "gpt-4o-mini",
+      leadStatus,
+    }).catch(() => undefined)
+  );
 
   return Response.json({
     comment: {
@@ -131,14 +192,6 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       mine: true,
       authorType: "user",
     },
-    agent: agent
-      ? {
-          id: agent.id,
-          text: agent.text,
-          name: agent.authorName,
-          timestampSec: agent.videoTimestamp,
-          authorType: "agent",
-        }
-      : null,
+    agent: null,
   });
 }

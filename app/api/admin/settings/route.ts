@@ -1,7 +1,7 @@
 import { NextRequest } from "next/server";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError } from "@/lib/utils";
-import { getAppSettings, isMaskedKey, maskApiKey } from "@/lib/settings";
+import { getAppSettings, invalidateAppSettings, isMaskedKey, maskApiKey } from "@/lib/settings";
 import { db } from "@/lib/db";
 
 async function guard() {
@@ -46,6 +46,7 @@ export async function PUT(request: NextRequest) {
     where: { id: current.id },
     data: { openaiApiKey, openaiModel },
   });
+  invalidateAppSettings();
 
   return Response.json({
     openaiApiKey: maskApiKey(settings.openaiApiKey),
