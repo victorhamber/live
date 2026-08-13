@@ -5,6 +5,8 @@ export const metadata: Metadata = {
   description: "Construtor de páginas live / VSL",
 };
 
+export const dynamic = "force-dynamic";
+
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
     <html lang="pt-BR">
