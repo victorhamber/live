@@ -7,6 +7,3 @@ export default async function Home() {
   const admin = await getAdmin();
   redirect(admin ? "/admin" : "/login");
 }
-  const admin = await getAdmin();
-  redirect(admin ? "/admin" : "/login");
-}
