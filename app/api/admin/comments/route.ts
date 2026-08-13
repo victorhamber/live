@@ -15,21 +15,25 @@ export async function GET(request: NextRequest) {
   if (!(await guard())) return jsonError("Não autorizado", 401);
   const url = request.nextUrl;
   const pageId = url.searchParams.get("pageId") || undefined;
-  const visibility = url.searchParams.get("visibility") || undefined;
+  const visibility = url.searchParams.get("visibility") || "active";
   const q = url.searchParams.get("q") || undefined;
 
   const comments = await db.comment.findMany({
     where: {
       pageId,
-      visibility: visibility && visibility !== "all" ? visibility : undefined,
-          OR: q
-        ? [
-            { text: { contains: q } },
-            { authorName: { contains: q } },
-            { visitor: { name: { contains: q } } },
-            { visitor: { email: { contains: q } } },
-          ]
-        : undefined,
+      ...(visibility === "active" || visibility === "all" || !visibility
+        ? { visibility: { not: "deleted" } }
+        : { visibility }),
+      ...(q
+        ? {
+            OR: [
+              { text: { contains: q } },
+              { authorName: { contains: q } },
+              { visitor: { name: { contains: q } } },
+              { visitor: { email: { contains: q } } },
+            ],
+          }
+        : {}),
     },
     include: {
       visitor: true,
@@ -51,6 +55,12 @@ export async function PATCH(request: NextRequest) {
     return jsonError("Dados inválidos");
   }
 
+  if (visibility === "deleted") {
+    await db.moderationLog.deleteMany({ where: { commentId: id } });
+    await db.comment.delete({ where: { id } });
+    return Response.json({ ok: true, deleted: true });
+  }
+
   const comment = await db.comment.update({
     where: { id },
     data: { visibility },
@@ -59,4 +69,16 @@ export async function PATCH(request: NextRequest) {
     data: { commentId: id, action: visibility, reason: "ação manual do administrador" },
   });
   return Response.json({ comment });
+}
+
+export async function DELETE(request: NextRequest) {
+  if (!(await guard())) return jsonError("Não autorizado", 401);
+  const pageId = request.nextUrl.searchParams.get("pageId") || undefined;
+  const result = await db.comment.deleteMany({
+    where: {
+      pageId,
+      visibility: "deleted",
+    },
+  });
+  return Response.json({ ok: true, count: result.count });
 }

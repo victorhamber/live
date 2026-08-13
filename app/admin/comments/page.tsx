@@ -17,7 +17,7 @@ type CommentRow = {
 
 export default function CommentsInbox() {
   const [comments, setComments] = useState<CommentRow[]>([]);
-  const [visibility, setVisibility] = useState("all");
+  const [visibility, setVisibility] = useState("active");
   const [q, setQ] = useState("");
 
   async function load() {
@@ -31,12 +31,21 @@ export default function CommentsInbox() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [visibility]);
 
-  async function setVis(id: string, visibility: string) {
+  async function setVis(id: string, next: string) {
     await fetch("/api/admin/comments", {
       method: "PATCH",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, visibility }),
+      body: JSON.stringify({ id, visibility: next }),
     });
+    if (next === "deleted") {
+      setComments((rows) => rows.filter((c) => c.id !== id));
+      return;
+    }
+    load();
+  }
+
+  async function purgeDeleted() {
+    await fetch("/api/admin/comments", { method: "DELETE" });
     load();
   }
 
@@ -64,13 +73,15 @@ export default function CommentsInbox() {
           value={visibility}
           onChange={(e) => setVisibility(e.target.value)}
         >
-          <option value="all">Todos</option>
+          <option value="active">Todos</option>
           <option value="public">Públicos</option>
           <option value="author_only">Restritos</option>
-          <option value="deleted">Excluídos</option>
         </select>
         <button onClick={load} className="rounded-lg bg-[#3ea6ff] px-3 py-2 text-sm text-[#0f1115]">
           Filtrar
+        </button>
+        <button onClick={purgeDeleted} className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm text-[#f87171]">
+          Limpar excluídos
         </button>
       </div>
       <div className="mt-6 grid gap-4">
