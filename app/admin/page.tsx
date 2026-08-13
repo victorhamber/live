@@ -48,11 +48,11 @@ export default async function AdminHome() {
                   </td>
                   <td className="px-4 py-3 text-[#9aa0a6]">
                     {p.status === "published" ? (
-                      <a className="underline" href={`/p/${p.slug}`} target="_blank" rel="noreferrer">
-                        /p/{p.slug}
+                      <a className="underline" href={`/${p.slug}`} target="_blank" rel="noreferrer">
+                        /{p.slug}
                       </a>
                     ) : (
-                      `/p/${p.slug}`
+                      `/${p.slug}`
                     )}
                   </td>
                   <td className="px-4 py-3">{p.status === "published" ? "Publicada" : "Rascunho"}</td>

@@ -1,11 +1,21 @@
+export const RESERVED_SLUGS = new Set([
+  "admin",
+  "login",
+  "api",
+  "p",
+  "favicon.ico",
+]);
+
 export function slugify(value: string) {
-  return value
+  const slug = value
     .normalize("NFD")
     .replace(/[\u0300-\u036f]/g, "")
     .toLowerCase()
     .replace(/[^a-z0-9]+/g, "-")
     .replace(/(^-|-$)/g, "")
     .slice(0, 80);
+  if (RESERVED_SLUGS.has(slug)) return `${slug}-live`;
+  return slug;
 }
 
 export function initials(name: string) {

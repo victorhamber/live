@@ -80,7 +80,7 @@ async function main() {
   }
 
   console.log(`Admin pronto: ${email}`);
-  console.log("Página demo: /p/trend-ao-vivo");
+  console.log("Página demo: /trend-ao-vivo");
 }
 
 main()

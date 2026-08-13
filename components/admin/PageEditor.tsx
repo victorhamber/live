@@ -162,11 +162,11 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">{form.title || "Página"}</h1>
-          <p className="text-sm text-[#9aa0a6]">/p/{form.slug}</p>
+          <p className="text-sm text-[#9aa0a6]">/{form.slug}</p>
         </div>
         <div className="flex gap-2">
           {form.status === "published" ? (
-            <a className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm" href={`/p/${form.slug}`} target="_blank">
+            <a className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm" href={`/${form.slug}`} target="_blank">
               Ver live
             </a>
           ) : null}
