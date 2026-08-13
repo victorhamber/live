@@ -23,6 +23,27 @@
     return d.innerHTML;
   }
 
+  function linkify(escaped) {
+    return escaped.replace(/(https?:\/\/[^\s<]+)/gi, function (url) {
+      const href = url.replace(/[),.;!?]+$/, "");
+      const trailing = url.slice(href.length);
+      return (
+        '<a class="msg-link" href="' +
+        href +
+        '" target="_blank" rel="noopener noreferrer">' +
+        href +
+        "</a>" +
+        trailing
+      );
+    });
+  }
+
+  function formatText(text, authorType) {
+    const escaped = sanitize(text);
+    if (authorType === "agent") return linkify(escaped);
+    return escaped;
+  }
+
   function showToast(msg) {
     const t = $("toast");
     t.textContent = msg;
@@ -73,7 +94,7 @@
         badge +
         sanitize(name) +
         '</span><span class="msg-text"> ' +
-        sanitize(text) +
+        formatText(text, authorType) +
         "</span></div>";
       chat.appendChild(d);
     }
@@ -130,7 +151,17 @@
     $("identity-modal").hidden = true;
   }
 
+  let sending = false;
+
+  function clearInput() {
+    const input = $("chat-input");
+    if (!input) return;
+    input.value = "";
+    toggleSend(input);
+  }
+
   async function sendUserMsg() {
+    if (sending) return;
     const input = $("chat-input");
     const text = input.value.trim();
     if (!text) return;
@@ -138,9 +169,12 @@
       openIdentity(text);
       return;
     }
-    await postComment(text);
-    input.value = "";
-    toggleSend(input);
+    sending = true;
+    try {
+      await postComment(text);
+    } finally {
+      sending = false;
+    }
   }
 
   async function postComment(text, identity) {
@@ -170,6 +204,8 @@
     if (data.agent) {
       setTimeout(() => ingest([{ ...data.agent, kind: "comment" }]), 900);
     }
+    clearInput();
+    return true;
   }
 
   function toggleSend(inp) {
@@ -206,7 +242,15 @@
       closeIdentity();
       const text = pendingText;
       pendingText = "";
-      if (text) await postComment(text, visitor);
+      clearInput();
+      if (text) {
+        sending = true;
+        try {
+          await postComment(text, visitor);
+        } finally {
+          sending = false;
+        }
+      }
     });
 
     setInterval(() => {

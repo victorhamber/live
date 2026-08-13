@@ -154,7 +154,8 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   background: #3ea6ff; color: #0f0f0f; font-size: 10px; font-weight: 800;
   padding: 1px 5px; border-radius: 3px; margin-right: 6px;
 }
-.msg-text { font-size: 14px; color: var(--text); }
+.msg-text { font-size: 14px; color: var(--text); word-break: break-word; }
+.msg-link { color: #3ea6ff; text-decoration: underline; word-break: break-all; }
 .superchat { border-radius: 8px; padding: 10px; margin-bottom: 10px; }
 .superchat-name { font-weight: 700; font-size: 13px; }
 .superchat-text { font-size: 14px; margin-top: 4px; }
