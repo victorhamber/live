@@ -2,14 +2,15 @@ import OpenAI from "openai";
 import { db } from "./db";
 import { colorForName } from "./utils";
 import { getAppSettings } from "./settings";
+import { compactTranscript, snapToTopicSec, spaceTopicTimestamps } from "./comment-timing";
 
-async function getOpenAiConfig() {
+async function getOpenAiConfig(timeoutMs = 8_000) {
   const settings = await getAppSettings();
   const key = settings.openaiApiKey.trim();
   return {
     key,
     model: settings.openaiModel.trim() || "gpt-4o-mini",
-    client: key ? new OpenAI({ apiKey: key, timeout: 8_000, maxRetries: 0 }) : null,
+    client: key ? new OpenAI({ apiKey: key, timeout: timeoutMs, maxRetries: 0 }) : null,
   };
 }
 
@@ -56,16 +57,16 @@ export async function generateTimedComments(input: {
   allowedTypes: string;
   temperature: number;
   model: string;
+  minIntervalSec?: number;
 }): Promise<GeneratedEvent[]> {
-  const { client: openai, model: configuredModel } = await getOpenAiConfig();
+  const { client: openai, model: configuredModel } = await getOpenAiConfig(120_000);
   if (!openai) {
     throw new Error("Configure a chave da OpenAI em Configurações");
   }
 
-  const transcriptBlock = input.transcript
-    .slice(0, 80)
-    .map((s) => `${s.timestampSec}s: ${s.text}`)
-    .join("\n");
+  const transcriptForModel = compactTranscript(input.transcript, 280);
+  const transcriptBlock = transcriptForModel.map((s) => `${s.timestampSec}s: ${s.text}`).join("\n");
+  const topicSecs = input.transcript.map((s) => s.timestampSec).sort((a, b) => a - b);
 
   const completion = await openai.chat.completions.create({
     model: input.model || configuredModel,
@@ -79,11 +80,13 @@ export async function generateTimedComments(input: {
 Tipos permitidos: ${input.allowedTypes}.
 Regras:
 - Comentários curtos, naturais, em português do Brasil, como pessoas reais no chat.
-- Relacionados ao trecho da transcrição naquele segundo.
+- timestampSec DEVE ser o segundo da LINHA DA TRANSCRIÇÃO sobre a qual a pessoa está reagindo. Copie o número da lista. Não invente um segundo “bonito”.
+- NÃO coloque o comentário no instante em que a frase é dita como se alguém já tivesse digitado. Uma pessoa real ouve, pensa e só depois escreve. O sistema atrasa a exibição 16–50s; você só marca o assunto.
 - Sem links, sem palavrões, sem prometer resultado financeiro.
 - Sem inventar preço, garantia ou funcionalidade que não esteja na base de conhecimento.
-- Densidade: cerca de 1 comentário a cada 8–20 segundos de vídeo, sem amontoar.
-- Varie: pergunta, objeção leve, benefício, depoimento curto, filler.`,
+- Densidade: cerca de 1 comentário a cada 12–25 segundos de vídeo, sem amontoar no mesmo trecho.
+- Varie: pergunta, objeção leve, benefício, depoimento curto, filler.
+- Filler de “chegando agora” só no começo. Depois, reaja ao que foi falado.`,
       },
       {
         role: "user",
@@ -94,7 +97,7 @@ ${input.instructions || "(nenhuma)"}
 Base de conhecimento do produto:
 ${input.knowledge || "(vazia)"}
 
-Transcrição (segundo → texto):
+Transcrição (segundo do assunto → texto):
 ${transcriptBlock || "(vazia)"}`,
       },
     ],
@@ -109,17 +112,19 @@ ${transcriptBlock || "(vazia)"}`,
   }
 
   const comments = Array.isArray(parsed.comments) ? parsed.comments : [];
-  return comments
+  const mapped = comments
     .filter((c) => typeof c.timestampSec === "number" && typeof c.text === "string" && c.text.trim())
     .map((c, i) => {
       const name = FAKE_NAMES[i % FAKE_NAMES.length];
       return {
-        timestampSec: Math.max(0, Math.round(c.timestampSec)),
+        timestampSec: snapToTopicSec(c.timestampSec, topicSecs),
         commentText: c.text.trim().slice(0, 240),
         commentType: (c.type || "comment").slice(0, 40),
         authorName: name,
       };
     });
+
+  return spaceTopicTimestamps(mapped, input.minIntervalSec ?? 10);
 }
 
 export async function classifyComment(text: string, model: string): Promise<string> {

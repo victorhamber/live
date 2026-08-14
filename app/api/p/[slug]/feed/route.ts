@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
 import { readVisitorSessionId } from "@/lib/session";
+import { commentAppearAt, MAX_REACTION_DELAY_SEC } from "@/lib/comment-timing";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -40,12 +41,16 @@ export async function GET(request: NextRequest, ctx: Ctx) {
     ? { gt: fromT, lte: t }
     : { lte: t };
 
+  const eventTimeFilter = incremental
+    ? { gt: Math.max(0, fromT - MAX_REACTION_DELAY_SEC), lte: t }
+    : { lte: t };
+
   const events =
     page.mode === "simulation"
       ? await db.commentEvent.findMany({
-          where: { pageId: page.id, timestampSec: timeFilter },
+          where: { pageId: page.id, timestampSec: eventTimeFilter },
           orderBy: { timestampSec: incremental ? "asc" : "desc" },
-          take: incremental ? 40 : 80,
+          take: incremental ? 80 : 160,
         })
       : [];
 
@@ -74,22 +79,32 @@ export async function GET(request: NextRequest, ctx: Ctx) {
     take: incremental ? 40 : 80,
   });
 
-  const eventRows = incremental ? events : [...events].reverse();
+  const eventRows = (incremental ? events : [...events].reverse())
+    .map((e) => {
+      const appearAt = commentAppearAt(e.timestampSec, e.commentType, e.commentText);
+      return {
+        id: e.id,
+        kind: "event" as const,
+        timestampSec: appearAt,
+        text: e.commentText,
+        name: e.authorName,
+        color: e.authorColor,
+        type: e.commentType,
+        isSuperchat: e.isSuperchat,
+        superAmount: e.superAmount,
+        authorType: e.authorType,
+      };
+    })
+    .filter((e) => {
+      if (e.timestampSec > t) return false;
+      if (incremental && e.timestampSec <= fromT) return false;
+      return true;
+    })
+    .slice(incremental ? 0 : -80);
   const commentRows = incremental ? comments : [...comments].reverse();
 
   return Response.json({
-    events: eventRows.map((e) => ({
-      id: e.id,
-      kind: "event",
-      timestampSec: e.timestampSec,
-      text: e.commentText,
-      name: e.authorName,
-      color: e.authorColor,
-      type: e.commentType,
-      isSuperchat: e.isSuperchat,
-      superAmount: e.superAmount,
-      authorType: e.authorType,
-    })),
+    events: eventRows,
     comments: commentRows.map((c) => ({
       id: c.id,
       kind: "comment",

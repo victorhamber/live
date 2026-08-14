@@ -34,6 +34,7 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     allowedTypes: page.settings.allowedCommentTypes,
     temperature: page.settings.temperature,
     model: page.settings.openaiModel,
+    minIntervalSec: page.settings.minIntervalSec,
   });
 
   await db.commentEvent.deleteMany({ where: { pageId: id, authorType: "ai" } });
