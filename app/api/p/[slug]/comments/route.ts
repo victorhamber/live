@@ -147,6 +147,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       visibility,
       authorType: "user",
       authorName: visitor.name,
+      inboxStatus: "pending",
     },
   });
 

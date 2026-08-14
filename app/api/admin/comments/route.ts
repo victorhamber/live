@@ -11,6 +11,12 @@ async function guard() {
   }
 }
 
+function inboxFromVisibility(visibility: string) {
+  if (visibility === "public") return "approved";
+  if (visibility === "author_only") return "restricted";
+  return null;
+}
+
 async function applyVisibility(id: string, visibility: string) {
   if (!id || !["public", "author_only", "deleted"].includes(visibility)) {
     return jsonError("Dados inválidos");
@@ -22,9 +28,10 @@ async function applyVisibility(id: string, visibility: string) {
     return Response.json({ ok: true, deleted: true });
   }
 
+  const inboxStatus = inboxFromVisibility(visibility) || "pending";
   const comment = await db.comment.update({
     where: { id },
-    data: { visibility },
+    data: { visibility, inboxStatus },
   });
   await db.moderationLog.create({
     data: { commentId: id, action: visibility, reason: "ação manual do administrador" },
@@ -36,15 +43,15 @@ export async function GET(request: NextRequest) {
   if (!(await guard())) return jsonError("Não autorizado", 401);
   const url = request.nextUrl;
   const pageId = url.searchParams.get("pageId") || undefined;
-  const visibility = url.searchParams.get("visibility") || "active";
+  const inbox = url.searchParams.get("inbox") || "pending";
   const q = url.searchParams.get("q") || undefined;
 
   const comments = await db.comment.findMany({
     where: {
       pageId,
-      ...(visibility === "active" || visibility === "all" || !visibility
-        ? { visibility: { not: "deleted" } }
-        : { visibility }),
+      authorType: "user",
+      visibility: { not: "deleted" },
+      ...(inbox === "all" ? {} : { inboxStatus: inbox }),
       ...(q
         ? {
             OR: [

@@ -246,6 +246,7 @@ export async function maybeReplyAsAgent(opts: {
       visibility: "public",
       authorType: "agent",
       authorName: page.agent.name,
+      inboxStatus: "approved",
     },
   });
 }

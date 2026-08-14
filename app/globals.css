@@ -21,3 +21,13 @@ body {
 body {
   font-family: Inter, system-ui, Segoe UI, sans-serif;
 }
+
+button:not(:disabled),
+a,
+select {
+  cursor: pointer;
+}
+
+button:disabled {
+  cursor: not-allowed;
+}
