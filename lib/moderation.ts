@@ -64,7 +64,7 @@ export function moderateByRules(text: string, recentTexts: string[]): RuleResult
     return { restricted: true, classification: "SPAM", reason: "mensagem longa demais" };
   }
 
-  if (URL_RE.test(raw) || raw.includes("wa.me") || raw.includes("whatsapp")) {
+  if (containsPostedLink(raw)) {
     return { restricted: true, classification: "SPAM", reason: "link ou divulgação" };
   }
 
@@ -89,6 +89,13 @@ export function moderateByRules(text: string, recentTexts: string[]): RuleResult
   return { restricted: false, classification: "NORMAL", reason: "" };
 }
 
+function containsPostedLink(raw: string) {
+  if (URL_RE.test(raw)) return true;
+  if (/wa\.me\/\d/i.test(raw)) return true;
+  if (/t\.me\/[a-z0-9_]/i.test(raw)) return true;
+  return false;
+}
+
 export function looksLikeQuestion(text: string) {
   const n = normalize(text);
   return (
@@ -97,7 +104,19 @@ export function looksLikeQuestion(text: string) {
     n.startsWith("qual ") ||
     n.startsWith("quanto ") ||
     n.startsWith("tem ") ||
-    n.startsWith("funciona")
+    n.startsWith("funciona") ||
+    n.startsWith("pode ") ||
+    n.startsWith("onde ") ||
+    n.startsWith("quando ")
+  );
+}
+
+export function wantsAgentReply(text: string, classification: string) {
+  if (["DUVIDA", "OBJECAO"].includes(classification)) return true;
+  if (looksLikeQuestion(text)) return true;
+  const n = normalize(text);
+  return /preco|preço|link|como |funciona|whats|comprar|checkout|suporte|acesso|liber|inscri|entrar|plano|valor|pagar|manda |envia |duvida|dúvida/.test(
+    n
   );
 }
 

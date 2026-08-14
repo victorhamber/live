@@ -43,7 +43,7 @@ export async function GET(request: NextRequest) {
   if (!(await guard())) return jsonError("Não autorizado", 401);
   const url = request.nextUrl;
   const pageId = url.searchParams.get("pageId") || undefined;
-  const inbox = url.searchParams.get("inbox") || "pending";
+  const inbox = url.searchParams.get("inbox") || "approved";
   const q = url.searchParams.get("q") || undefined;
 
   const comments = await db.comment.findMany({

@@ -2,14 +2,15 @@ import OpenAI from "openai";
 import { db } from "./db";
 import { colorForName } from "./utils";
 import { getAppSettings } from "./settings";
+import { wantsAgentReply } from "./moderation";
 
-async function getOpenAiConfig() {
+async function getOpenAiConfig(timeoutMs = 8_000) {
   const settings = await getAppSettings();
   const key = settings.openaiApiKey.trim();
   return {
     key,
     model: settings.openaiModel.trim() || "gpt-4o-mini",
-    client: key ? new OpenAI({ apiKey: key, timeout: 8_000, maxRetries: 0 }) : null,
+    client: key ? new OpenAI({ apiKey: key, timeout: timeoutMs, maxRetries: 0 }) : null,
   };
 }
 
@@ -57,7 +58,7 @@ export async function generateTimedComments(input: {
   temperature: number;
   model: string;
 }): Promise<GeneratedEvent[]> {
-  const { client: openai, model: configuredModel } = await getOpenAiConfig();
+  const { client: openai, model: configuredModel } = await getOpenAiConfig(120_000);
   if (!openai) {
     throw new Error("Configure a chave da OpenAI em Configurações");
   }
@@ -157,7 +158,7 @@ export async function agentReply(input: {
   model: string;
   temperature: number;
 }): Promise<string | null> {
-  const { client: openai, model: configuredModel } = await getOpenAiConfig();
+  const { client: openai, model: configuredModel } = await getOpenAiConfig(20_000);
   if (!openai) return null;
 
   const links = input.links.map((l) => `${l.label}: ${l.url}`).join("\n") || "(nenhum)";
@@ -216,10 +217,7 @@ export async function maybeReplyAsAgent(opts: {
   const { key } = await getOpenAiConfig();
   if (!key) return null;
 
-  const should =
-    ["DUVIDA", "OBJECAO"].includes(opts.classification) ||
-    /[?]/.test(opts.text) ||
-    /preço|preco|link|como|funciona|whats|comprar/i.test(opts.text);
+  const should = wantsAgentReply(opts.text, opts.classification);
   if (!should) return null;
 
   const reply = await agentReply({

@@ -24,7 +24,7 @@ const TABS = [
 
 export default function CommentsInbox() {
   const [comments, setComments] = useState<CommentRow[]>([]);
-  const [inbox, setInbox] = useState<(typeof TABS)[number]["id"]>("pending");
+  const [inbox, setInbox] = useState<(typeof TABS)[number]["id"]>("approved");
   const [q, setQ] = useState("");
   const [busyId, setBusyId] = useState("");
   const [message, setMessage] = useState("");
@@ -83,7 +83,7 @@ export default function CommentsInbox() {
     <div>
       <h1 className="text-2xl font-semibold">Comentários</h1>
       <p className="text-sm text-[#9aa0a6]">
-        Fila de revisão. Aprovar tira daqui e manda para a aba Aprovados. Lá você ainda pode excluir depois.
+        Comentário comum entra aprovado e o agente responde na hora. Só link, ofensa e spam vão para Restritos.
       </p>
       <div className="mt-4 flex flex-wrap gap-2">
         {TABS.map((tab) => (
