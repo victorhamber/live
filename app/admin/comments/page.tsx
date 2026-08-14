@@ -22,6 +22,34 @@ const TABS = [
   { id: "restricted", label: "Restritos" },
 ] as const;
 
+function ActionLink({
+  color,
+  disabled,
+  onClick,
+  children,
+}: {
+  color: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href="#acao"
+      role="button"
+      aria-disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault();
+        if (!disabled) onClick();
+      }}
+      className="inline-block rounded-lg px-3 py-2 text-sm underline decoration-current underline-offset-4"
+      style={{ color, cursor: disabled ? "wait" : "pointer" }}
+    >
+      {children}
+    </a>
+  );
+}
+
 export default function CommentsInbox() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [inbox, setInbox] = useState<(typeof TABS)[number]["id"]>("approved");
@@ -141,36 +169,18 @@ export default function CommentsInbox() {
                 </p>
                 <div className="relative z-20 mt-3 flex flex-wrap gap-2">
                   {inbox !== "approved" ? (
-                    <button
-                      type="button"
-                      disabled={busyId === c.id}
-                      className="rounded-lg border border-[#34d399]/40 bg-[#0f1115] px-3 py-2 text-sm text-[#34d399] hover:bg-[#34d399]/10 disabled:opacity-50"
-                      style={{ cursor: busyId === c.id ? "wait" : "pointer" }}
-                      onClick={() => setVis(c.id, "public")}
-                    >
+                    <ActionLink color="#34d399" disabled={busyId === c.id} onClick={() => setVis(c.id, "public")}>
                       Aprovar
-                    </button>
+                    </ActionLink>
                   ) : null}
                   {inbox !== "restricted" ? (
-                    <button
-                      type="button"
-                      disabled={busyId === c.id}
-                      className="rounded-lg border border-[#fbbf24]/40 bg-[#0f1115] px-3 py-2 text-sm text-[#fbbf24] hover:bg-[#fbbf24]/10 disabled:opacity-50"
-                      style={{ cursor: busyId === c.id ? "wait" : "pointer" }}
-                      onClick={() => setVis(c.id, "author_only")}
-                    >
+                    <ActionLink color="#fbbf24" disabled={busyId === c.id} onClick={() => setVis(c.id, "author_only")}>
                       Restringir
-                    </button>
+                    </ActionLink>
                   ) : null}
-                  <button
-                    type="button"
-                    disabled={busyId === c.id}
-                    className="rounded-lg border border-[#f87171]/40 bg-[#0f1115] px-3 py-2 text-sm text-[#f87171] hover:bg-[#f87171]/10 disabled:opacity-50"
-                    style={{ cursor: busyId === c.id ? "wait" : "pointer" }}
-                    onClick={() => setVis(c.id, "deleted")}
-                  >
+                  <ActionLink color="#f87171" disabled={busyId === c.id} onClick={() => setVis(c.id, "deleted")}>
                     Excluir
-                  </button>
+                  </ActionLink>
                 </div>
               </div>
             ))}

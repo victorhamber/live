@@ -10,6 +10,12 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen">
+      <style
+        dangerouslySetInnerHTML={{
+          __html:
+            "button:not(:disabled),a,select{cursor:pointer!important}button:disabled{cursor:not-allowed!important}",
+        }}
+      />
       <aside className="fixed inset-y-0 left-0 z-20 w-60 border-r border-[#2a2f3a] bg-[#12151b] p-4">
         <Link href="/admin" className="block text-lg font-semibold">
           Live Pages

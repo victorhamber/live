@@ -25,9 +25,9 @@ body {
 button:not(:disabled),
 a,
 select {
-  cursor: pointer;
+  cursor: pointer !important;
 }
 
 button:disabled {
-  cursor: not-allowed;
+  cursor: not-allowed !important;
 }
