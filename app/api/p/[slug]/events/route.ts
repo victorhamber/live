@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
+import { commentAppearAt } from "@/lib/comment-timing";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -17,15 +18,20 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   });
 
   return Response.json({
-    events: events.map((e) => ({
-      id: e.id,
-      timestampSec: e.timestampSec,
-      text: e.commentText,
-      name: e.authorName,
-      color: e.authorColor,
-      type: e.commentType,
-      isSuperchat: e.isSuperchat,
-      superAmount: e.superAmount,
-    })),
+    events: events
+      .map((e) => {
+        const appearAt = commentAppearAt(e.timestampSec, e.commentType, e.commentText);
+        return {
+          id: e.id,
+          timestampSec: appearAt,
+          text: e.commentText,
+          name: e.authorName,
+          color: e.authorColor,
+          type: e.commentType,
+          isSuperchat: e.isSuperchat,
+          superAmount: e.superAmount,
+        };
+      })
+      .filter((e) => e.timestampSec <= t),
   });
 }

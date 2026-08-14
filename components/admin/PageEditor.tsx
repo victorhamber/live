@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { commentAppearAt, formatClock } from "@/lib/comment-timing";
 
 type LinkItem = { label: string; url: string };
 type ActionItem = { key: string; label: string; url: string };
@@ -326,6 +327,9 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <label className="grid gap-1 text-sm">Máx. msgs/min<input type="number" className={fieldClass()} value={form.maxMessagesPerMinute} onChange={(e) => set("maxMessagesPerMinute", Number(e.target.value))} /></label>
             <label className="grid gap-1 text-sm">Limite diário de API<input type="number" className={fieldClass()} value={form.dailyApiLimit} onChange={(e) => set("dailyApiLimit", Number(e.target.value))} /></label>
             <label className="grid gap-1 text-sm">Tipos permitidos<input className={fieldClass()} value={form.allowedCommentTypes} onChange={(e) => set("allowedCommentTypes", e.target.value)} /></label>
+            <p className="text-sm text-[#9aa0a6]">
+              Os comentários da IA entram 16–50 segundos depois do trecho. Tempo de ouvir, pensar e digitar.
+            </p>
             <button type="button" disabled={generating} onClick={generate} className="w-fit rounded-lg bg-[#34d399] px-4 py-2 font-medium text-[#0f1115]">
               {generating ? "Gerando..." : "Gerar comentários com IA"}
             </button>
@@ -334,7 +338,9 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
               <div className="max-h-80 overflow-auto text-sm">
                 {events.map((ev) => (
                   <div key={ev.id} className="border-t border-[#2a2f3a] py-2">
-                    <span className="text-[#9aa0a6]">{ev.timestampSec}s · {ev.authorName} · {ev.commentType}</span>
+                    <span className="text-[#9aa0a6]">
+                      chat {formatClock(commentAppearAt(ev.timestampSec, ev.commentType, ev.commentText))} · assunto {formatClock(ev.timestampSec)} · {ev.authorName} · {ev.commentType}
+                    </span>
                     <div>{ev.commentText}</div>
                   </div>
                 ))}
