@@ -19,10 +19,12 @@ export default function CommentsInbox() {
   const [comments, setComments] = useState<CommentRow[]>([]);
   const [visibility, setVisibility] = useState("active");
   const [q, setQ] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const [message, setMessage] = useState("");
 
   async function load() {
     const res = await fetch(`/api/admin/comments?visibility=${visibility}&q=${encodeURIComponent(q)}`);
-    const data = await res.json();
+    const data = await res.json().catch(() => ({}));
     setComments(data.comments || []);
   }
 
@@ -32,20 +34,49 @@ export default function CommentsInbox() {
   }, [visibility]);
 
   async function setVis(id: string, next: string) {
-    await fetch("/api/admin/comments", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, visibility: next }),
-    });
+    if (busyId) return;
+    setBusyId(id);
+    setMessage("");
+    const previous = comments;
     if (next === "deleted") {
       setComments((rows) => rows.filter((c) => c.id !== id));
-      return;
+    } else {
+      setComments((rows) => rows.map((c) => (c.id === id ? { ...c, visibility: next } : c)));
     }
-    load();
+    try {
+      const res = await fetch("/api/admin/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setVisibility", id, visibility: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setComments(previous);
+        setMessage(data.error || "Não foi possível atualizar o comentário");
+      }
+    } catch {
+      setComments(previous);
+      setMessage("Falha de rede ao atualizar o comentário");
+    } finally {
+      setBusyId("");
+    }
   }
 
   async function purgeDeleted() {
-    await fetch("/api/admin/comments", { method: "DELETE" });
+    setMessage("");
+    try {
+      const res = await fetch("/api/admin/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "purgeDeleted" }),
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        setMessage(data.error || "Não foi possível limpar os excluídos");
+      }
+    } catch {
+      setMessage("Falha de rede ao limpar os excluídos");
+    }
     load();
   }
 
@@ -77,16 +108,17 @@ export default function CommentsInbox() {
           <option value="public">Públicos</option>
           <option value="author_only">Restritos</option>
         </select>
-        <button onClick={load} className="rounded-lg bg-[#3ea6ff] px-3 py-2 text-sm text-[#0f1115]">
+        <button type="button" onClick={load} className="rounded-lg bg-[#3ea6ff] px-3 py-2 text-sm text-[#0f1115]">
           Filtrar
         </button>
-        <button onClick={purgeDeleted} className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm text-[#f87171]">
+        <button type="button" onClick={purgeDeleted} className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm text-[#f87171]">
           Limpar excluídos
         </button>
       </div>
+      {message ? <p className="mt-3 text-sm text-[#f87171]">{message}</p> : null}
       <div className="mt-6 grid gap-4">
         {Object.entries(grouped).map(([key, rows]) => (
-          <section key={key} className="rounded-xl border border-[#2a2f3a] bg-[#171a21] p-4">
+          <section key={key} className="relative z-10 rounded-xl border border-[#2a2f3a] bg-[#171a21] p-4">
             <div className="mb-3">
               <p className="font-medium">{rows[0].visitor?.name || rows[0].authorName}</p>
               <p className="text-sm text-[#9aa0a6]">
@@ -94,20 +126,35 @@ export default function CommentsInbox() {
               </p>
             </div>
             {rows.map((c) => (
-              <div key={c.id} className="border-t border-[#2a2f3a] py-3 text-sm">
-                <p>
+              <div key={c.id} className="relative z-10 border-t border-[#2a2f3a] py-3 text-sm">
+                <p className="break-words">
                   <span className="text-[#9aa0a6]">{c.videoTimestamp}s · {c.classification} · {c.visibility}</span>
                   <br />
                   {c.text}
                 </p>
-                <div className="mt-2 flex gap-2">
-                  <button className="text-[#34d399]" onClick={() => setVis(c.id, "public")}>
+                <div className="relative z-20 mt-3 flex flex-wrap gap-2">
+                  <button
+                    type="button"
+                    disabled={busyId === c.id}
+                    className="cursor-pointer rounded-lg border border-[#34d399]/40 bg-[#0f1115] px-3 py-2 text-sm text-[#34d399] hover:bg-[#34d399]/10 disabled:opacity-50"
+                    onClick={() => setVis(c.id, "public")}
+                  >
                     Aprovar
                   </button>
-                  <button className="text-[#fbbf24]" onClick={() => setVis(c.id, "author_only")}>
+                  <button
+                    type="button"
+                    disabled={busyId === c.id}
+                    className="cursor-pointer rounded-lg border border-[#fbbf24]/40 bg-[#0f1115] px-3 py-2 text-sm text-[#fbbf24] hover:bg-[#fbbf24]/10 disabled:opacity-50"
+                    onClick={() => setVis(c.id, "author_only")}
+                  >
                     Restringir
                   </button>
-                  <button className="text-[#f87171]" onClick={() => setVis(c.id, "deleted")}>
+                  <button
+                    type="button"
+                    disabled={busyId === c.id}
+                    className="cursor-pointer rounded-lg border border-[#f87171]/40 bg-[#0f1115] px-3 py-2 text-sm text-[#f87171] hover:bg-[#f87171]/10 disabled:opacity-50"
+                    onClick={() => setVis(c.id, "deleted")}
+                  >
                     Excluir
                   </button>
                 </div>

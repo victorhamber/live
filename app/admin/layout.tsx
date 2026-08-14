@@ -10,7 +10,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
 
   return (
     <div className="min-h-screen">
-      <aside className="fixed inset-y-0 left-0 w-60 border-r border-[#2a2f3a] bg-[#12151b] p-4">
+      <aside className="fixed inset-y-0 left-0 z-20 w-60 border-r border-[#2a2f3a] bg-[#12151b] p-4">
         <Link href="/admin" className="block text-lg font-semibold">
           Live Pages
         </Link>
@@ -33,7 +33,7 @@ export default async function AdminLayout({ children }: { children: React.ReactN
           <LogoutButton />
         </div>
       </aside>
-      <div className="ml-60 p-6">{children}</div>
+      <div className="relative z-10 ml-60 p-6">{children}</div>
     </div>
   );
 }
