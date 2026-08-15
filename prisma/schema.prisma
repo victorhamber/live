@@ -154,12 +154,14 @@ model Comment {
   visibility     String          @default("public")
   authorType     String          @default("user")
   authorName     String          @default("")
+  inboxStatus    String          @default("pending")
   createdAt      DateTime        @default(now())
   updatedAt      DateTime        @updatedAt
   moderationLogs ModerationLog[]
 
   @@index([pageId, createdAt])
   @@index([pageId, videoTimestamp])
+  @@index([pageId, inboxStatus])
 }
 
 model ModerationLog {

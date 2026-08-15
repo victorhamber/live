@@ -7,6 +7,7 @@ type CommentRow = {
   text: string;
   classification: string;
   visibility: string;
+  inboxStatus?: string;
   authorType: string;
   authorName: string;
   videoTimestamp: number;
@@ -15,38 +16,81 @@ type CommentRow = {
   page: { title: string; slug: string };
 };
 
+const TABS = [
+  { id: "pending", label: "Pendentes" },
+  { id: "approved", label: "Aprovados" },
+  { id: "restricted", label: "Restritos" },
+] as const;
+
+function ActionLink({
+  color,
+  disabled,
+  onClick,
+  children,
+}: {
+  color: string;
+  disabled?: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <a
+      href="#acao"
+      role="button"
+      aria-disabled={disabled}
+      onClick={(e) => {
+        e.preventDefault();
+        if (!disabled) onClick();
+      }}
+      className="inline-block rounded-lg px-3 py-2 text-sm underline decoration-current underline-offset-4"
+      style={{ color, cursor: disabled ? "wait" : "pointer" }}
+    >
+      {children}
+    </a>
+  );
+}
+
 export default function CommentsInbox() {
   const [comments, setComments] = useState<CommentRow[]>([]);
-  const [visibility, setVisibility] = useState("active");
+  const [inbox, setInbox] = useState<(typeof TABS)[number]["id"]>("approved");
   const [q, setQ] = useState("");
+  const [busyId, setBusyId] = useState("");
+  const [message, setMessage] = useState("");
 
   async function load() {
-    const res = await fetch(`/api/admin/comments?visibility=${visibility}&q=${encodeURIComponent(q)}`);
-    const data = await res.json();
+    const res = await fetch(`/api/admin/comments?inbox=${inbox}&q=${encodeURIComponent(q)}`);
+    const data = await res.json().catch(() => ({}));
     setComments(data.comments || []);
   }
 
   useEffect(() => {
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [visibility]);
+  }, [inbox]);
 
   async function setVis(id: string, next: string) {
-    await fetch("/api/admin/comments", {
-      method: "PATCH",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ id, visibility: next }),
-    });
-    if (next === "deleted") {
-      setComments((rows) => rows.filter((c) => c.id !== id));
-      return;
+    if (busyId) return;
+    setBusyId(id);
+    setMessage("");
+    const previous = comments;
+    setComments((rows) => rows.filter((c) => c.id !== id));
+    try {
+      const res = await fetch("/api/admin/comments", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ action: "setVisibility", id, visibility: next }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setComments(previous);
+        setMessage(data.error || "Não foi possível atualizar o comentário");
+      }
+    } catch {
+      setComments(previous);
+      setMessage("Falha de rede ao atualizar o comentário");
+    } finally {
+      setBusyId("");
     }
-    load();
-  }
-
-  async function purgeDeleted() {
-    await fetch("/api/admin/comments", { method: "DELETE" });
-    load();
   }
 
   const grouped = comments.reduce<Record<string, CommentRow[]>>((acc, c) => {
@@ -56,10 +100,34 @@ export default function CommentsInbox() {
     return acc;
   }, {});
 
+  const emptyLabel =
+    inbox === "pending"
+      ? "Nenhum comentário pendente."
+      : inbox === "approved"
+        ? "Nenhum comentário aprovado."
+        : "Nenhum comentário restrito.";
+
   return (
     <div>
       <h1 className="text-2xl font-semibold">Comentários</h1>
-      <p className="text-sm text-[#9aa0a6]">Agrupados por usuário. Aprove, restrinja ou exclua.</p>
+      <p className="text-sm text-[#9aa0a6]">
+        Comentário comum entra aprovado e o agente responde na hora. Só link, ofensa e spam vão para Restritos.
+      </p>
+      <div className="mt-4 flex flex-wrap gap-2">
+        {TABS.map((tab) => (
+          <button
+            key={tab.id}
+            type="button"
+            onClick={() => setInbox(tab.id)}
+            className={`rounded-full px-3 py-1.5 text-sm ${
+              inbox === tab.id ? "bg-[#3ea6ff] text-[#0f1115]" : "bg-[#171a21] text-[#9aa0a6]"
+            }`}
+            style={{ cursor: "pointer" }}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
       <div className="mt-4 flex flex-wrap gap-2">
         <input
           className="rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 text-sm"
@@ -68,25 +136,22 @@ export default function CommentsInbox() {
           onChange={(e) => setQ(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && load()}
         />
-        <select
-          className="rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 text-sm"
-          value={visibility}
-          onChange={(e) => setVisibility(e.target.value)}
+        <button
+          type="button"
+          onClick={load}
+          className="rounded-lg bg-[#3ea6ff] px-3 py-2 text-sm text-[#0f1115]"
+          style={{ cursor: "pointer" }}
         >
-          <option value="active">Todos</option>
-          <option value="public">Públicos</option>
-          <option value="author_only">Restritos</option>
-        </select>
-        <button onClick={load} className="rounded-lg bg-[#3ea6ff] px-3 py-2 text-sm text-[#0f1115]">
           Filtrar
         </button>
-        <button onClick={purgeDeleted} className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm text-[#f87171]">
-          Limpar excluídos
-        </button>
       </div>
+      {message ? <p className="mt-3 text-sm text-[#f87171]">{message}</p> : null}
       <div className="mt-6 grid gap-4">
+        {Object.keys(grouped).length === 0 ? (
+          <p className="text-sm text-[#9aa0a6]">{emptyLabel}</p>
+        ) : null}
         {Object.entries(grouped).map(([key, rows]) => (
-          <section key={key} className="rounded-xl border border-[#2a2f3a] bg-[#171a21] p-4">
+          <section key={key} className="relative z-10 rounded-xl border border-[#2a2f3a] bg-[#171a21] p-4">
             <div className="mb-3">
               <p className="font-medium">{rows[0].visitor?.name || rows[0].authorName}</p>
               <p className="text-sm text-[#9aa0a6]">
@@ -94,22 +159,28 @@ export default function CommentsInbox() {
               </p>
             </div>
             {rows.map((c) => (
-              <div key={c.id} className="border-t border-[#2a2f3a] py-3 text-sm">
-                <p>
-                  <span className="text-[#9aa0a6]">{c.videoTimestamp}s · {c.classification} · {c.visibility}</span>
+              <div key={c.id} className="relative z-10 border-t border-[#2a2f3a] py-3 text-sm">
+                <p className="break-words">
+                  <span className="text-[#9aa0a6]">
+                    {c.videoTimestamp}s · {c.classification} · {c.visibility}
+                  </span>
                   <br />
                   {c.text}
                 </p>
-                <div className="mt-2 flex gap-2">
-                  <button className="text-[#34d399]" onClick={() => setVis(c.id, "public")}>
-                    Aprovar
-                  </button>
-                  <button className="text-[#fbbf24]" onClick={() => setVis(c.id, "author_only")}>
-                    Restringir
-                  </button>
-                  <button className="text-[#f87171]" onClick={() => setVis(c.id, "deleted")}>
+                <div className="relative z-20 mt-3 flex flex-wrap gap-2">
+                  {inbox !== "approved" ? (
+                    <ActionLink color="#34d399" disabled={busyId === c.id} onClick={() => setVis(c.id, "public")}>
+                      Aprovar
+                    </ActionLink>
+                  ) : null}
+                  {inbox !== "restricted" ? (
+                    <ActionLink color="#fbbf24" disabled={busyId === c.id} onClick={() => setVis(c.id, "author_only")}>
+                      Restringir
+                    </ActionLink>
+                  ) : null}
+                  <ActionLink color="#f87171" disabled={busyId === c.id} onClick={() => setVis(c.id, "deleted")}>
                     Excluir
-                  </button>
+                  </ActionLink>
                 </div>
               </div>
             ))}

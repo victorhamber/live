@@ -3,7 +3,7 @@ import { after, NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
 import { readVisitorSessionId, setVisitorSessionId } from "@/lib/session";
-import { inferLeadStatus, looksLikeQuestion, moderateByRules } from "@/lib/moderation";
+import { inferLeadStatus, looksLikeQuestion, moderateByRules, wantsAgentReply } from "@/lib/moderation";
 import { classifyComment, maybeReplyAsAgent } from "@/lib/openai";
 import { getAppSettings } from "@/lib/settings";
 
@@ -28,20 +28,31 @@ async function refineInBackground(opts: {
 }) {
   let classification = opts.classification;
   let visibility = opts.visibility;
+  const appSettings = opts.aiEnabled ? await getAppSettings() : { openaiApiKey: "" };
+  const hasKey = Boolean(appSettings.openaiApiKey.trim());
 
-  if (!opts.aiEnabled || visibility !== "public") return;
+  const shouldReplyNow =
+    opts.aiEnabled && hasKey && visibility === "public" && wantsAgentReply(opts.text, opts.classification);
+  const replyPromise = shouldReplyNow
+    ? maybeReplyAsAgent({
+        pageId: opts.pageId,
+        visitorName: opts.visitorName,
+        text: opts.text,
+        videoTimestamp: opts.videoTimestamp,
+        classification: opts.classification,
+      }).catch(() => null)
+    : Promise.resolve(null);
 
-  const appSettings = await getAppSettings();
-  if (!appSettings.openaiApiKey.trim()) return;
-
-  try {
-    const aiClass = await classifyComment(opts.text, opts.openaiModel);
-    classification = aiClass;
-    if (["SPAM", "OFENSIVO", "NEGATIVO"].includes(aiClass)) {
-      visibility = "author_only";
+  if (opts.aiEnabled && hasKey && visibility === "public") {
+    try {
+      const aiClass = await classifyComment(opts.text, opts.openaiModel);
+      classification = aiClass;
+      if (["SPAM", "OFENSIVO", "NEGATIVO"].includes(aiClass)) {
+        visibility = "author_only";
+      }
+    } catch {
+      /* regras já cobrem o básico */
     }
-  } catch {
-    /* regras já cobrem o básico */
   }
 
   if (looksLikeQuestion(opts.text) && classification === "NORMAL") {
@@ -51,7 +62,11 @@ async function refineInBackground(opts: {
   if (classification !== opts.classification || visibility !== opts.visibility) {
     await db.comment.update({
       where: { id: opts.commentId },
-      data: { classification, visibility },
+      data: {
+        classification,
+        visibility,
+        inboxStatus: visibility === "public" ? "approved" : "restricted",
+      },
     });
     await db.moderationLog.create({
       data: {
@@ -67,18 +82,22 @@ async function refineInBackground(opts: {
     await db.visitor.update({ where: { id: opts.visitorId }, data: { leadStatus: nextStatus } });
   }
 
-  if (visibility !== "public") return;
+  await replyPromise;
 
-  try {
+  if (
+    !shouldReplyNow &&
+    opts.aiEnabled &&
+    hasKey &&
+    visibility === "public" &&
+    wantsAgentReply(opts.text, classification)
+  ) {
     await maybeReplyAsAgent({
       pageId: opts.pageId,
       visitorName: opts.visitorName,
       text: opts.text,
       videoTimestamp: opts.videoTimestamp,
       classification,
-    });
-  } catch {
-    /* o feed pega a resposta quando existir */
+    }).catch(() => null);
   }
 }
 
@@ -147,6 +166,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
       visibility,
       authorType: "user",
       authorName: visitor.name,
+      inboxStatus: visibility === "public" ? "approved" : "restricted",
     },
   });
 
