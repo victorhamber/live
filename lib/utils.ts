@@ -84,3 +84,21 @@ export function colorForName(name: string) {
 export function jsonError(message: string, status = 400) {
   return Response.json({ error: message }, { status });
 }
+
+function escapeHtml(value: string) {
+  return value
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;");
+}
+
+export function linkifyHtml(value: string) {
+  const escaped = escapeHtml(value || "");
+  return escaped.replace(/(https?:\/\/[^\s<]+)|(www\.[^\s<]+)/gi, (raw) => {
+    const href = raw.replace(/[),.;!?]+$/, "");
+    const trailing = raw.slice(href.length);
+    const url = href.startsWith("www.") ? `https://${href}` : href;
+    return `<a class="desc-link" href="${url}" target="_blank" rel="noopener noreferrer">${href}</a>${trailing}`;
+  });
+}

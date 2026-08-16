@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
-import { initials } from "@/lib/utils";
+import { initials, linkifyHtml } from "@/lib/utils";
 import { getAppSettings } from "@/lib/settings";
 
 export const dynamic = "force-dynamic";
@@ -43,7 +43,7 @@ export default async function LivePage({ params }: Props) {
 
   return (
     <>
-      <link rel="stylesheet" href="/live.css?v=3" />
+      <link rel="stylesheet" href="/live.css?v=4" />
       <div className="topbar">
         <a className="yt-logo" href="#">
           {page.brandName}
@@ -107,9 +107,11 @@ export default async function LivePage({ params }: Props) {
                 </strong>
                 <span>Há alguns momentos</span>
               </div>
-              <div className="desc-text" id="desc-text">
-                {page.description}
-              </div>
+              <div
+                className="desc-text"
+                id="desc-text"
+                dangerouslySetInnerHTML={{ __html: linkifyHtml(page.description) }}
+              />
               <div className="desc-toggle-btn" id="desc-toggle">
                 Mostrar menos
               </div>
@@ -166,7 +168,7 @@ export default async function LivePage({ params }: Props) {
           __html: `window.__LIVE__=${JSON.stringify(config)};`,
         }}
       />
-      <script src="/live.js?v=6" defer />
+      <script src="/live.js?v=7" defer />
     </>
   );
 }

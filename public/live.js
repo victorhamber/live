@@ -262,7 +262,8 @@
   }
 
   function init() {
-    $("desc-box").addEventListener("click", () => {
+    $("desc-box").addEventListener("click", (e) => {
+      if (e.target.closest("a")) return;
       descExpanded = !descExpanded;
       $("desc-text").classList.toggle("collapsed", !descExpanded);
       $("desc-toggle").textContent = descExpanded ? "Mostrar menos" : "...mais";

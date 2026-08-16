@@ -122,8 +122,15 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   cursor: pointer;
 }
 .desc-meta { display: flex; gap: 10px; font-size: 13px; margin-bottom: 8px; }
-.desc-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: #ddd; }
+.desc-text { white-space: pre-wrap; font-size: 14px; line-height: 1.5; color: #ddd; overflow-wrap: anywhere; }
 .desc-text.collapsed { max-height: 72px; overflow: hidden; }
+.desc-link {
+  color: #3ea6ff;
+  text-decoration: underline;
+  cursor: pointer;
+  pointer-events: auto;
+  word-break: break-all;
+}
 .desc-toggle-btn { color: #fff; font-weight: 600; margin-top: 8px; font-size: 14px; }
 
 .chat-side {
