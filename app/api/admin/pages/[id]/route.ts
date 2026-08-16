@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError, parseTranscript, slugify } from "@/lib/utils";
+import { dropOrphanAgentReplies } from "@/lib/scripted-replies";
 
 async function guard() {
   try {
@@ -16,6 +17,7 @@ type Ctx = { params: Promise<{ id: string }> };
 export async function GET(_req: NextRequest, ctx: Ctx) {
   if (!(await guard())) return jsonError("Não autorizado", 401);
   const { id } = await ctx.params;
+  await dropOrphanAgentReplies(id);
   const page = await db.page.findUnique({
     where: { id },
     include: {
