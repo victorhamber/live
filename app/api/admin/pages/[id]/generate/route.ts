@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError, colorForName } from "@/lib/utils";
 import { generateTimedComments } from "@/lib/openai";
+import { rebuildScriptedAgentReplies } from "@/lib/scripted-replies";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -36,7 +37,9 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     model: page.settings.openaiModel,
   });
 
-  await db.commentEvent.deleteMany({ where: { pageId: id, authorType: "ai" } });
+  await db.commentEvent.deleteMany({
+    where: { pageId: id, authorType: { in: ["ai", "agent"] } },
+  });
   if (events.length) {
     await db.commentEvent.createMany({
       data: events.map((e) => ({
@@ -51,5 +54,12 @@ export async function POST(_req: NextRequest, ctx: Ctx) {
     });
   }
 
-  return Response.json({ count: events.length });
+  let replies = 0;
+  try {
+    replies = await rebuildScriptedAgentReplies(id);
+  } catch {
+    replies = 0;
+  }
+
+  return Response.json({ count: events.length, replies });
 }

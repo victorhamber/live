@@ -201,6 +201,83 @@ ${actions}`,
   return text ? text.slice(0, 400) : null;
 }
 
+export function scriptedNeedsReply(commentType: string, text: string) {
+  const type = (commentType || "").toLowerCase();
+  if (["question", "objection", "duvida", "objecao"].includes(type)) return true;
+  const classification = type === "question" ? "DUVIDA" : type === "objection" ? "OBJECAO" : "NORMAL";
+  return wantsAgentReply(text, classification);
+}
+
+export async function generateScriptedAgentReplies(input: {
+  questions: { id: string; name: string; text: string; type: string }[];
+  knowledge: string;
+  agentName: string;
+  personality: string;
+  goal: string;
+  links: { label: string; url: string }[];
+  actions: { key: string; label: string; url: string }[];
+  model: string;
+}): Promise<Record<string, string>> {
+  if (!input.questions.length) return {};
+  const { client: openai, model: configuredModel } = await getOpenAiConfig(60_000);
+  if (!openai) return {};
+
+  const links = input.links.map((l) => `${l.label}: ${l.url}`).join("\n") || "(nenhum)";
+  const actions = input.actions.map((a) => `/${a.key} → ${a.label}: ${a.url}`).join("\n") || "(nenhuma)";
+  const list = input.questions
+    .map((q) => `- id=${q.id} | ${q.name} (${q.type}): ${q.text}`)
+    .join("\n");
+
+  const completion = await openai.chat.completions.create({
+    model: input.model || configuredModel,
+    temperature: 0.4,
+    response_format: { type: "json_object" },
+    messages: [
+      {
+        role: "system",
+        content: `Você é ${input.agentName} no chat ao vivo.
+Personalidade: ${input.personality}.
+Objetivo: ${input.goal}.
+Responda SOMENTE JSON válido:
+{"replies":[{"id":"string","text":"string"}]}
+Regras:
+- Uma resposta para cada id da lista.
+- Só use a base de conhecimento ou os links/ações cadastrados.
+- Não invente preço, garantia, resultado ou prazo.
+- 1–3 frases, tom de chat. Pode incluir um link cadastrado se a pergunta pedir.
+- Sem markdown pesado.
+
+Base de conhecimento:
+${input.knowledge || "(vazia — não invente)"}
+
+Links autorizados:
+${links}
+
+Ações:
+${actions}`,
+      },
+      {
+        role: "user",
+        content: `Perguntas fake do chat:\n${list}`,
+      },
+    ],
+  });
+
+  const raw = completion.choices[0]?.message?.content || "{}";
+  let parsed: { replies?: { id?: string; text?: string }[] };
+  try {
+    parsed = JSON.parse(raw);
+  } catch {
+    return {};
+  }
+  const map: Record<string, string> = {};
+  for (const row of parsed.replies || []) {
+    if (!row?.id || !row?.text?.trim()) continue;
+    map[row.id] = row.text.trim().slice(0, 400);
+  }
+  return map;
+}
+
 export async function maybeReplyAsAgent(opts: {
   pageId: string;
   visitorName: string;

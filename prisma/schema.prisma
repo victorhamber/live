@@ -105,9 +105,11 @@ model CommentEvent {
   priority     Int      @default(0)
   isSuperchat  Boolean  @default(false)
   superAmount  String   @default("")
+  inReplyToId  String?
   createdAt    DateTime @default(now())
 
   @@index([pageId, timestampSec])
+  @@index([inReplyToId])
 }
 
 model PageSettings {
