@@ -1,9 +1,11 @@
 import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { PageEditor } from "@/components/admin/PageEditor";
+import { dropOrphanAgentReplies } from "@/lib/scripted-replies";
 
 export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  await dropOrphanAgentReplies(id);
   const page = await db.page.findUnique({
     where: { id },
     include: {
