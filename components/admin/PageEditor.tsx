@@ -177,9 +177,13 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
       headers: { "Content-Type": "application/json" },
       body: JSON.stringify({ action: "delete", eventId }),
     });
+    const data = await res.json().catch(() => ({}));
     if (!res.ok) {
-      const data = await res.json().catch(() => ({}));
       setMessage(data.error || "Não foi possível excluir");
+      return;
+    }
+    if (Array.isArray(data.commentEvents)) {
+      setEvents(data.commentEvents);
       return;
     }
     setEvents((rows) => rows.filter((ev) => ev.id !== eventId && ev.inReplyToId !== eventId));

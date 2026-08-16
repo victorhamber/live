@@ -2,7 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError } from "@/lib/utils";
-import { rebuildScriptedAgentReplies } from "@/lib/scripted-replies";
+import { rebuildScriptedAgentReplies, deleteScriptedEventAndReplies, dropOrphanAgentReplies } from "@/lib/scripted-replies";
 
 type Ctx = { params: Promise<{ id: string }> };
 
@@ -24,13 +24,13 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     if (!eventId) return jsonError("Evento inválido");
     const event = await db.commentEvent.findFirst({ where: { id: eventId, pageId: id } });
     if (!event) return jsonError("Evento não encontrado", 404);
-    await db.commentEvent.deleteMany({
-      where: {
-        pageId: id,
-        OR: [{ id: eventId }, { inReplyToId: eventId }],
-      },
+    await deleteScriptedEventAndReplies(id, eventId);
+    await dropOrphanAgentReplies(id);
+    const commentEvents = await db.commentEvent.findMany({
+      where: { pageId: id },
+      orderBy: { timestampSec: "asc" },
     });
-    return Response.json({ ok: true });
+    return Response.json({ ok: true, commentEvents });
   }
 
   if (action === "replies") {
