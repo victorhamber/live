@@ -11,6 +11,8 @@ type EventItem = {
   commentText: string;
   authorName: string;
   commentType: string;
+  authorType?: string;
+  inReplyToId?: string | null;
 };
 
 type PagePayload = {
@@ -63,6 +65,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
   const [tab, setTab] = useState<(typeof tabs)[number]>("Vídeo");
   const [saving, setSaving] = useState(false);
   const [generating, setGenerating] = useState(false);
+  const [generatingReplies, setGeneratingReplies] = useState(false);
   const [message, setMessage] = useState("");
   const [form, setForm] = useState({
     title: initial.title,
@@ -141,10 +144,45 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
       setMessage(data.error || "Falha na geração");
       return;
     }
-    setMessage(`${data.count} comentários gerados`);
+    setMessage(`${data.count} comentários gerados${data.replies ? ` · ${data.replies} respostas do agente` : ""}`);
     const fresh = await fetch(`/api/admin/pages/${initial.id}`);
     const body = await fresh.json();
     setEvents(body.page.commentEvents || []);
+  }
+
+  async function generateReplies() {
+    setGeneratingReplies(true);
+    setMessage("");
+    await save();
+    const res = await fetch(`/api/admin/pages/${initial.id}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "replies" }),
+    });
+    const data = await res.json().catch(() => ({}));
+    setGeneratingReplies(false);
+    if (!res.ok) {
+      setMessage(data.error || "Falha ao gerar respostas do agente");
+      return;
+    }
+    setMessage(`${data.replies || 0} respostas do agente geradas`);
+    const fresh = await fetch(`/api/admin/pages/${initial.id}`);
+    const body = await fresh.json();
+    setEvents(body.page.commentEvents || []);
+  }
+
+  async function deleteEvent(eventId: string) {
+    const res = await fetch(`/api/admin/pages/${initial.id}/events`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action: "delete", eventId }),
+    });
+    if (!res.ok) {
+      const data = await res.json().catch(() => ({}));
+      setMessage(data.error || "Não foi possível excluir");
+      return;
+    }
+    setEvents((rows) => rows.filter((ev) => ev.id !== eventId && ev.inReplyToId !== eventId));
   }
 
   async function removePage() {
@@ -326,16 +364,41 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <label className="grid gap-1 text-sm">Máx. msgs/min<input type="number" className={fieldClass()} value={form.maxMessagesPerMinute} onChange={(e) => set("maxMessagesPerMinute", Number(e.target.value))} /></label>
             <label className="grid gap-1 text-sm">Limite diário de API<input type="number" className={fieldClass()} value={form.dailyApiLimit} onChange={(e) => set("dailyApiLimit", Number(e.target.value))} /></label>
             <label className="grid gap-1 text-sm">Tipos permitidos<input className={fieldClass()} value={form.allowedCommentTypes} onChange={(e) => set("allowedCommentTypes", e.target.value)} /></label>
-            <button type="button" disabled={generating} onClick={generate} className="w-fit rounded-lg bg-[#34d399] px-4 py-2 font-medium text-[#0f1115]">
-              {generating ? "Gerando..." : "Gerar comentários com IA"}
-            </button>
+            <div className="flex flex-wrap gap-2">
+              <button type="button" disabled={generating} onClick={generate} className="w-fit rounded-lg bg-[#34d399] px-4 py-2 font-medium text-[#0f1115]" style={{ cursor: "pointer" }}>
+                {generating ? "Gerando..." : "Gerar comentários com IA"}
+              </button>
+              <button type="button" disabled={generatingReplies || events.length === 0} onClick={generateReplies} className="w-fit rounded-lg border border-[#3ea6ff] px-4 py-2 font-medium text-[#3ea6ff]" style={{ cursor: "pointer" }}>
+                {generatingReplies ? "Respondendo..." : "Gerar respostas do agente"}
+              </button>
+            </div>
+            <p className="text-sm text-[#9aa0a6]">
+              O agente responde perguntas e objeções fake na timeline, alguns segundos depois. Exclua as que não quiser.
+            </p>
             <div className="rounded-xl border border-[#2a2f3a] p-3">
               <p className="mb-2 text-sm text-[#9aa0a6]">{events.length} eventos na timeline</p>
               <div className="max-h-80 overflow-auto text-sm">
                 {events.map((ev) => (
-                  <div key={ev.id} className="border-t border-[#2a2f3a] py-2">
-                    <span className="text-[#9aa0a6]">{ev.timestampSec}s · {ev.authorName} · {ev.commentType}</span>
-                    <div>{ev.commentText}</div>
+                  <div key={ev.id} className="flex items-start justify-between gap-3 border-t border-[#2a2f3a] py-2">
+                    <div>
+                      <span className="text-[#9aa0a6]">
+                        {ev.timestampSec}s · {ev.authorName} · {ev.commentType}
+                        {ev.authorType === "agent" ? " · agente" : ""}
+                      </span>
+                      <div>{ev.commentText}</div>
+                    </div>
+                    <a
+                      href="#excluir-evento"
+                      role="button"
+                      className="shrink-0 text-sm text-[#f87171] underline underline-offset-4"
+                      style={{ cursor: "pointer" }}
+                      onClick={(e) => {
+                        e.preventDefault();
+                        deleteEvent(ev.id);
+                      }}
+                    >
+                      Excluir
+                    </a>
                   </div>
                 ))}
               </div>
