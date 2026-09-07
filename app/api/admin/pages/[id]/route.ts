@@ -76,6 +76,7 @@ export async function PUT(request: NextRequest, ctx: Ctx) {
       template: isPageTemplate(body.template) ? body.template : current.template,
       ctaLabel: body.ctaLabel != null ? String(body.ctaLabel) : current.ctaLabel,
       ctaUrl: body.ctaUrl != null ? String(body.ctaUrl) : current.ctaUrl,
+      customHtml: body.customHtml != null ? String(body.customHtml) : current.customHtml,
       agent: {
         upsert: {
           create: {
