@@ -2,6 +2,7 @@
 
 import { FormEvent, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
+import { PAGE_TEMPLATES } from "@/lib/templates";
 
 type LinkItem = { label: string; url: string };
 type ActionItem = { key: string; label: string; url: string };
@@ -30,6 +31,9 @@ type PagePayload = {
   vturbPlayerId: string;
   vturbScriptUrl: string;
   thumbnailUrl: string;
+  template: string;
+  ctaLabel: string;
+  ctaUrl: string;
   language: string;
   viewersBase: number;
   chatNote: string;
@@ -81,6 +85,9 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     vturbPlayerId: initial.vturbPlayerId,
     vturbScriptUrl: initial.vturbScriptUrl,
     thumbnailUrl: initial.thumbnailUrl,
+    template: initial.template || "youtube",
+    ctaLabel: initial.ctaLabel || "",
+    ctaUrl: initial.ctaUrl || "",
     language: initial.language,
     viewersBase: initial.viewersBase,
     chatNote: initial.chatNote,
@@ -207,6 +214,9 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
           <p className="text-sm text-[#9aa0a6]">/{form.slug}</p>
         </div>
         <div className="flex gap-2">
+          <a className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm" href={`/admin/pages/${initial.id}/stats`}>
+            Estatísticas
+          </a>
           {form.status === "published" ? (
             <a className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm" href={`/${form.slug}`} target="_blank">
               Ver live
@@ -238,9 +248,32 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
       <div className="mt-6 grid gap-4">
         {tab === "Vídeo" && (
           <>
+            <div>
+              <p className="mb-2 text-sm font-medium">Modelo da sala</p>
+              <p className="mb-3 text-sm text-[#9aa0a6]">Escolha o visual da página pública. O player e o chat continuam os mesmos; muda o palco.</p>
+              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                {PAGE_TEMPLATES.map((tpl) => {
+                  const active = form.template === tpl.id;
+                  return (
+                    <button
+                      type="button"
+                      key={tpl.id}
+                      onClick={() => set("template", tpl.id)}
+                      className={`rounded-xl border p-3 text-left ${active ? "border-[#3ea6ff] bg-[#3ea6ff]/10" : "border-[#2a2f3a] bg-[#0f1115]"}`}
+                    >
+                      <div className="text-sm font-semibold">{tpl.name}</div>
+                      <p className="mt-1 text-xs leading-5 text-[#9aa0a6]">{tpl.description}</p>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
             <label className="grid gap-1 text-sm">Título interno<input className={fieldClass()} value={form.title} onChange={(e) => set("title", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Slug<input className={fieldClass()} value={form.slug} onChange={(e) => set("slug", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Título do vídeo<input className={fieldClass()} value={form.videoTitle} onChange={(e) => set("videoTitle", e.target.value)} /></label>
+            <label className="grid gap-1 text-sm">Texto do botão (CTA)<input className={fieldClass()} value={form.ctaLabel} onChange={(e) => set("ctaLabel", e.target.value)} placeholder="Quero participar" /></label>
+            <label className="grid gap-1 text-sm">URL do botão (CTA)<input className={fieldClass()} value={form.ctaUrl} onChange={(e) => set("ctaUrl", e.target.value)} placeholder="https://..." /></label>
+            <p className="text-xs text-[#9aa0a6]">Se a URL do CTA ficar vazia, o primeiro botão de ação do agente (com link) é usado na sala.</p>
             <label className="grid gap-1 text-sm">Marca / logo<input className={fieldClass()} value={form.brandName} onChange={(e) => set("brandName", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Canal<input className={fieldClass()} value={form.channelName} onChange={(e) => set("channelName", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Subtítulo do canal<input className={fieldClass()} value={form.channelHandle} onChange={(e) => set("channelHandle", e.target.value)} /></label>
