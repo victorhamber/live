@@ -22,6 +22,9 @@ export default async function AdminLayout({ children }: { children: React.ReactN
         </Link>
         <p className="mt-1 truncate text-xs text-[#9aa0a6]">{admin.email}</p>
         <nav className="mt-8 grid gap-1 text-sm">
+          <Link className="rounded-lg px-3 py-2 hover:bg-[#1d222c]" href="/admin/stats">
+            Dashboard
+          </Link>
           <Link className="rounded-lg px-3 py-2 hover:bg-[#1d222c]" href="/admin">
             Páginas
           </Link>

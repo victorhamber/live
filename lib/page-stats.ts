@@ -151,30 +151,18 @@ function insightFor(funnel: FunnelStep[], bounceRate: number, avgSec: number): P
   return items.slice(0, 4);
 }
 
-export async function getPageStats(pageId: string, range: StatRangeId) {
-  const since = rangeSince(range);
-  const visitWhere = since ? { pageId, startedAt: { gte: since } } : { pageId };
-  const eventWhere = since ? { pageId, createdAt: { gte: since } } : { pageId };
+type VisitLite = {
+  anonId: string;
+  referrer: string;
+  startedAt: Date;
+  durationSec: number;
+  identified: boolean;
+  commented: boolean;
+  clicked: boolean;
+  clickCount: number;
+};
 
-  const visits = await db.visit.findMany({
-    where: visitWhere,
-    select: {
-      anonId: true,
-      referrer: true,
-      startedAt: true,
-      durationSec: true,
-      identified: true,
-      commented: true,
-      clicked: true,
-      clickCount: true,
-    },
-  });
-
-  const clickEvents = await db.analyticsEvent.findMany({
-    where: { ...eventWhere, type: "click" },
-    select: { label: true, url: true },
-  });
-
+function summarizeVisits(visits: VisitLite[], clickEvents: { label: string; url: string }[], range: StatRangeId) {
   const access = visits.length;
   const uniquePeople = new Set(visits.map((v) => v.anonId)).size;
   const stayed = visits.filter((v) => v.durationSec >= 30).length;
@@ -235,7 +223,6 @@ export async function getPageStats(pageId: string, range: StatRangeId) {
 
   return {
     range,
-    since,
     access,
     uniquePeople,
     avgSec,
@@ -251,6 +238,85 @@ export async function getPageStats(pageId: string, range: StatRangeId) {
     referrers,
     series,
     insights: insightFor(funnel, pct(bounced, access), avgSec),
+  };
+}
+
+export async function getPageStats(pageId: string, range: StatRangeId) {
+  const since = rangeSince(range);
+  const visitWhere = since ? { pageId, startedAt: { gte: since } } : { pageId };
+  const eventWhere = since ? { pageId, createdAt: { gte: since } } : { pageId };
+
+  const visits = await db.visit.findMany({
+    where: visitWhere,
+    select: {
+      anonId: true,
+      referrer: true,
+      startedAt: true,
+      durationSec: true,
+      identified: true,
+      commented: true,
+      clicked: true,
+      clickCount: true,
+    },
+  });
+
+  const clickEvents = await db.analyticsEvent.findMany({
+    where: { ...eventWhere, type: "click" },
+    select: { label: true, url: true },
+  });
+
+  return summarizeVisits(visits, clickEvents, range);
+}
+
+export async function getOverviewStats(range: StatRangeId) {
+  const since = rangeSince(range);
+  const visitWhere = since ? { startedAt: { gte: since } } : {};
+  const eventWhere = since
+    ? { type: "click" as const, createdAt: { gte: since } }
+    : { type: "click" as const };
+
+  const pages = await db.page.findMany({
+    orderBy: { updatedAt: "desc" },
+    select: { id: true, title: true, slug: true, template: true, status: true },
+  });
+
+  const visits = await db.visit.findMany({
+    where: visitWhere,
+    select: {
+      pageId: true,
+      anonId: true,
+      referrer: true,
+      startedAt: true,
+      durationSec: true,
+      identified: true,
+      commented: true,
+      clicked: true,
+      clickCount: true,
+    },
+  });
+
+  const clickEvents = await db.analyticsEvent.findMany({
+    where: eventWhere,
+    select: { pageId: true, label: true, url: true },
+  });
+
+  const overall = summarizeVisits(visits, clickEvents, range);
+  const pageRows = pages
+    .map((page) => {
+      const pageVisits = visits.filter((visit) => visit.pageId === page.id);
+      const pageClicks = clickEvents.filter((event) => event.pageId === page.id);
+      return {
+        ...page,
+        stats: summarizeVisits(pageVisits, pageClicks, range),
+      };
+    })
+    .sort((a, b) => b.stats.access - a.stats.access || a.title.localeCompare(b.title, "pt-BR"));
+
+  return {
+    ...overall,
+    pageCount: pages.length,
+    publishedCount: pages.filter((page) => page.status === "published").length,
+    pages: pageRows,
   };
 }
 

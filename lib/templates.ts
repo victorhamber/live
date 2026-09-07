@@ -2,7 +2,7 @@ export const PAGE_TEMPLATES = [
   {
     id: "youtube",
     name: "YouTube Live",
-    description: "O layout clássico de live do YouTube, com vídeo à esquerda e chat à direita.",
+    description: "Vídeo à esquerda e chat alto à direita, no formato clássico de live.",
     badge: "Ao vivo",
     chatTitle: "Chat ao vivo",
     stageLabel: "",
@@ -12,7 +12,7 @@ export const PAGE_TEMPLATES = [
   {
     id: "classroom",
     name: "Sala de aula",
-    description: "Cabeçalho de aula, chat de perguntas e visual mais institucional.",
+    description: "Vídeo em tela cheia no topo; material da aula à esquerda e perguntas embaixo, à direita.",
     badge: "Aula ao vivo",
     chatTitle: "Perguntas da aula",
     stageLabel: "Sala de aula",
@@ -22,7 +22,7 @@ export const PAGE_TEMPLATES = [
   {
     id: "webinar",
     name: "Webinar",
-    description: "Palco profissional, faixa de marca e CTA em destaque para conversão.",
+    description: "Palco centralizado, CTA largo e perguntas embaixo do vídeo — não ao lado.",
     badge: "Webinar",
     chatTitle: "Perguntas",
     stageLabel: "Webinar ao vivo",
@@ -32,7 +32,7 @@ export const PAGE_TEMPLATES = [
   {
     id: "theater",
     name: "Cinema",
-    description: "Vídeo dominante, ambiente escuro e chat estreito, no estilo sessão.",
+    description: "Vídeo em tela cheia; chat flutua por cima do player, como numa sessão de cinema.",
     badge: "Ao vivo",
     chatTitle: "Chat",
     stageLabel: "Sessão",
@@ -42,7 +42,7 @@ export const PAGE_TEMPLATES = [
   {
     id: "meetup",
     name: "Reunião",
-    description: "Cartões arredondados e conversa à vista, no estilo encontro ao vivo.",
+    description: "Vídeo e conversa lado a lado, do mesmo tamanho, no estilo reunião.",
     badge: "Ao vivo",
     chatTitle: "Conversa",
     stageLabel: "Encontro",

@@ -250,7 +250,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
           <>
             <div>
               <p className="mb-2 text-sm font-medium">Modelo da sala</p>
-              <p className="mb-3 text-sm text-[#9aa0a6]">Escolha o visual da página pública. O player e o chat continuam os mesmos; muda o palco.</p>
+              <p className="mb-3 text-sm text-[#9aa0a6]">Cada modelo muda a estrutura da sala: posição do vídeo, do chat e do botão — não só as cores.</p>
               <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                 {PAGE_TEMPLATES.map((tpl) => {
                   const active = form.template === tpl.id;

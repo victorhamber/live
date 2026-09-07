@@ -57,11 +57,18 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 .main-wrap {
   display: grid;
   grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-areas:
+    "player chat"
+    "info chat";
   gap: 20px;
   max-width: 1400px;
   margin: 0 auto;
   padding: 16px;
+  align-items: start;
 }
+.video-side { display: contents; }
+.player-wrap { grid-area: player; }
+.video-info { grid-area: info; }
 
 .player-wrap {
   position: relative;
@@ -111,13 +118,15 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   display: inline-block;
 }
 
-.video-info { margin-top: 14px; }
+.video-info { margin-top: 0; }
 .video-title { font-size: 20px; font-weight: 700; line-height: 1.3; }
 .channel-row { display: flex; gap: 12px; align-items: center; margin: 14px 0; flex-wrap: wrap; }
 .channel-name { font-weight: 600; }
 .channel-subs { color: var(--muted); font-size: 13px; }
 .live-cta {
-  margin-left: auto;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--red);
   color: #fff;
   text-decoration: none;
@@ -126,6 +135,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   padding: 10px 16px;
   border-radius: 10px;
   white-space: nowrap;
+  margin: 0 0 14px;
 }
 .stage-banner {
   display: none;
@@ -148,7 +158,18 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 }
 .desc-toggle-btn { color: #fff; font-weight: 600; margin-top: 8px; font-size: 14px; }
 
+.tpl-youtube .video-info {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  column-gap: 16px;
+}
+.tpl-youtube .video-title,
+.tpl-youtube .desc-box { grid-column: 1 / -1; }
+.tpl-youtube .live-cta { margin: 14px 0; }
+
 .chat-side {
+  grid-area: chat;
   background: var(--chat);
   border: 1px solid var(--line);
   border-radius: 12px;
@@ -221,9 +242,15 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
 
 @media (max-width: 980px) {
-  .main-wrap { grid-template-columns: 1fr; }
+  .main-wrap {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "player"
+      "info"
+      "chat";
+  }
   .chat-side { height: 70vh; position: static; }
-  .live-cta { margin-left: 0; width: 100%; text-align: center; }
+  .live-cta { width: 100%; }
 }
 
 /* --- Modelos de sala --- */
@@ -239,15 +266,23 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   background: #0a2340;
   border-bottom: 2px solid #c9a227;
 }
+.tpl-classroom .main-wrap {
+  grid-template-columns: minmax(0, 1fr) 400px;
+  grid-template-areas:
+    "player player"
+    "info chat";
+  max-width: 1280px;
+}
+.tpl-classroom .player-wrap { border-radius: 8px; }
 .tpl-classroom .live-badge { background: #c9a227; color: #111; }
 .tpl-classroom .live-badge::before { content: "▸ "; }
 .tpl-classroom .stage-banner {
   display: flex;
   gap: 10px;
   align-items: baseline;
-  max-width: 1400px;
+  max-width: 1280px;
   margin: 0 auto;
-  padding: 12px 16px 0;
+  padding: 16px 16px 0;
   color: #f0c75e;
   font-size: 13px;
   letter-spacing: .04em;
@@ -257,11 +292,34 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   color: #fff;
   text-transform: none;
   letter-spacing: 0;
-  font-size: 16px;
+  font-size: 18px;
 }
-.tpl-classroom .desc-box { background: #10253d; border: 1px solid #1e3a57; }
-.tpl-classroom .chat-side { border-color: #1e3a57; background: #0a1c30; }
-.tpl-classroom .live-cta { background: #c9a227; color: #111; }
+.tpl-classroom .video-info {
+  background: #10253d;
+  border: 1px solid #1e3a57;
+  border-radius: 12px;
+  padding: 16px;
+}
+.tpl-classroom .video-title::before {
+  content: "Material da aula";
+  display: block;
+  color: #f0c75e;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+  margin-bottom: 8px;
+}
+.tpl-classroom .desc-box { background: #0a1c30; border: 1px solid #1e3a57; cursor: default; }
+.tpl-classroom .chat-side {
+  height: auto;
+  min-height: 480px;
+  max-height: none;
+  position: static;
+  border-color: #1e3a57;
+  background: #0a1c30;
+}
+.tpl-classroom .live-cta { background: #c9a227; color: #111; width: 100%; }
 
 .tpl-webinar {
   --bg: #101218;
@@ -269,7 +327,7 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   --line: #2c3344;
   --blue: #5b8cff;
   background:
-    radial-gradient(1200px 400px at 50% -80px, rgba(91,140,255,.22), transparent 70%),
+    radial-gradient(900px 320px at 50% -40px, rgba(91,140,255,.28), transparent 70%),
     #101218;
 }
 .tpl-webinar .topbar {
@@ -281,47 +339,99 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   justify-content: center;
   gap: 12px;
   align-items: baseline;
-  padding: 14px 16px 0;
+  padding: 18px 16px 0;
   color: #9db4ff;
   font-size: 12px;
   letter-spacing: .12em;
   text-transform: uppercase;
 }
-.tpl-webinar .stage-banner strong { color: #fff; letter-spacing: 0; text-transform: none; font-size: 18px; }
+.tpl-webinar .stage-banner strong { color: #fff; letter-spacing: 0; text-transform: none; font-size: 20px; }
+.tpl-webinar .main-wrap {
+  max-width: 920px;
+  grid-template-columns: 1fr;
+  grid-template-areas:
+    "player"
+    "info"
+    "chat";
+}
 .tpl-webinar .player-wrap {
   border-radius: 4px;
-  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+  box-shadow: 0 24px 60px rgba(0,0,0,.4);
 }
 .tpl-webinar .live-badge { background: #5b8cff; }
+.tpl-webinar .video-info { text-align: center; }
+.tpl-webinar .channel-row { justify-content: center; }
 .tpl-webinar .live-cta {
   background: #5b8cff;
   color: #0b1020;
   border-radius: 999px;
-  padding: 11px 22px;
+  width: 100%;
+  padding: 14px 22px;
+  font-size: 16px;
 }
-.tpl-webinar .chat-side { border-radius: 4px; background: #151821; }
+.tpl-webinar .desc-box { text-align: left; }
+.tpl-webinar .chat-side {
+  height: 420px;
+  position: static;
+  border-radius: 4px;
+  background: #151821;
+}
 
 .tpl-theater {
-  --bg: #050505;
-  --chat: #0a0a0a;
-  --line: #222;
-  background: #050505;
+  --bg: #000;
+  --chat: transparent;
+  --line: #2a2a2a;
+  background: #000;
+  position: relative;
 }
-.tpl-theater .topbar { background: #000; border-bottom-color: #1a1a1a; }
+.tpl-theater .topbar {
+  background: #000;
+  border-bottom-color: #111;
+  position: absolute;
+  left: 0; right: 0; top: 0;
+}
+.tpl-theater .stage-banner { display: none; }
 .tpl-theater .main-wrap {
+  position: relative;
   max-width: none;
-  grid-template-columns: minmax(0, 1fr) 300px;
-  gap: 12px;
-  padding: 8px 12px 16px;
+  min-height: 100vh;
+  margin: 0;
+  padding: 0;
+  grid-template-columns: 1fr;
+  grid-template-areas: "player";
 }
-.tpl-theater .player-wrap { border-radius: 0; }
-.tpl-theater .video-title { font-size: 18px; }
-.tpl-theater .chat-side {
+.tpl-theater .player-wrap {
   border-radius: 0;
-  height: calc(100vh - 80px);
-  background: #0a0a0a;
+  aspect-ratio: auto;
+  height: 100vh;
 }
-.tpl-theater .desc-box { background: #141414; }
+.tpl-theater .video-info,
+.tpl-theater .chat-side { grid-area: player; }
+.tpl-theater .video-info {
+  position: absolute;
+  left: 20px;
+  bottom: 28px;
+  z-index: 8;
+  max-width: min(560px, 52vw);
+  padding: 16px 16px 8px;
+  background: linear-gradient(180deg, transparent, rgba(0,0,0,.82));
+  border-radius: 8px;
+}
+.tpl-theater .video-title { font-size: 18px; }
+.tpl-theater .desc-box { display: none; }
+.tpl-theater .chat-side {
+  position: absolute;
+  top: 80px;
+  right: 24px;
+  width: min(300px, 30vw);
+  height: min(72vh, 720px);
+  z-index: 9;
+  border-radius: 14px;
+  background: rgba(8, 8, 8, .72);
+  border: 1px solid rgba(255,255,255,.14);
+  box-shadow: 0 18px 50px rgba(0,0,0,.55);
+  backdrop-filter: blur(12px);
+}
 .tpl-theater .live-cta { background: #fff; color: #111; border-radius: 2px; }
 
 .tpl-meetup {
@@ -340,23 +450,69 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   display: flex;
   gap: 10px;
   align-items: baseline;
-  max-width: 1400px;
+  max-width: 1500px;
   margin: 0 auto;
   padding: 16px 16px 0;
   color: #7ee0a6;
   font-size: 13px;
 }
 .tpl-meetup .stage-banner strong { color: #fff; font-size: 18px; }
-.tpl-meetup .player-wrap,
-.tpl-meetup .chat-side,
-.tpl-meetup .desc-box {
+.tpl-meetup .main-wrap {
+  max-width: 1500px;
+  grid-template-columns: 1fr 1fr;
+  grid-template-areas:
+    "player chat"
+    "info info";
+  gap: 16px;
+}
+.tpl-meetup .player-wrap {
+  aspect-ratio: auto;
+  height: min(68vh, 640px);
   border-radius: 22px;
   box-shadow: 0 12px 40px rgba(0,0,0,.25);
 }
-.tpl-meetup .chat-side { border: 0; background: #1c1a27; }
+.tpl-meetup .chat-side {
+  height: min(68vh, 640px);
+  position: static;
+  border: 0;
+  border-radius: 22px;
+  background: #1c1a27;
+  box-shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+.tpl-meetup .desc-box { border-radius: 22px; }
 .tpl-meetup .live-badge { background: #7ee0a6; color: #102018; }
 .tpl-meetup .live-cta { background: #7ee0a6; color: #102018; border-radius: 999px; }
 
 @media (max-width: 980px) {
-  .tpl-theater .main-wrap { grid-template-columns: 1fr; }
+  .tpl-classroom .main-wrap,
+  .tpl-webinar .main-wrap,
+  .tpl-meetup .main-wrap,
+  .tpl-theater .main-wrap {
+    grid-template-columns: 1fr;
+    grid-template-areas:
+      "player"
+      "info"
+      "chat";
+    padding: 12px;
+    min-height: 0;
+  }
+  .tpl-classroom .chat-side,
+  .tpl-webinar .chat-side,
+  .tpl-meetup .chat-side,
+  .tpl-theater .chat-side {
+    position: static;
+    width: auto;
+    height: 60vh;
+    max-height: none;
+    inset: auto;
+  }
+  .tpl-theater .topbar { position: sticky; }
+  .tpl-theater .player-wrap { height: auto; aspect-ratio: 16 / 9; }
+  .tpl-theater .video-info {
+    position: static;
+    max-width: none;
+    background: transparent;
+  }
+  .tpl-theater .desc-box { display: block; }
+  .tpl-meetup .player-wrap { height: auto; aspect-ratio: 16 / 9; }
 }

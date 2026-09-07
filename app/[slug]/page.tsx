@@ -53,7 +53,7 @@ export default async function LivePage({ params }: Props) {
 
   return (
     <>
-      <link rel="stylesheet" href="/live.css?v=5" />
+      <link rel="stylesheet" href="/live.css?v=6" />
       <div className={`live-root tpl-${tpl.id}`} id="live-root" data-template={tpl.id}>
         <div className="topbar">
           <a className="yt-logo" href="#">
@@ -117,18 +117,18 @@ export default async function LivePage({ params }: Props) {
                   <div className="channel-name">{page.channelName || page.brandName}</div>
                   <div className="channel-subs">{page.channelHandle || "Transmissão ao vivo"}</div>
                 </div>
-                {cta ? (
-                  <a
-                    className="live-cta"
-                    data-track-label="CTA"
-                    href={cta.url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                  >
-                    {cta.label}
-                  </a>
-                ) : null}
               </div>
+              {cta ? (
+                <a
+                  className="live-cta"
+                  data-track-label="CTA"
+                  href={cta.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                >
+                  {cta.label}
+                </a>
+              ) : null}
               <div className="desc-box" id="desc-box">
                 <div className="desc-meta">
                   <strong id="desc-views-label">
