@@ -11,6 +11,7 @@
 
 * { box-sizing: border-box; }
 html, body { margin: 0; background: var(--bg); color: var(--text); font-family: Roboto, Arial, sans-serif; }
+.live-root { min-height: 100vh; }
 
 .topbar {
   height: 56px;
@@ -112,9 +113,23 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 
 .video-info { margin-top: 14px; }
 .video-title { font-size: 20px; font-weight: 700; line-height: 1.3; }
-.channel-row { display: flex; gap: 12px; align-items: center; margin: 14px 0; }
+.channel-row { display: flex; gap: 12px; align-items: center; margin: 14px 0; flex-wrap: wrap; }
 .channel-name { font-weight: 600; }
 .channel-subs { color: var(--muted); font-size: 13px; }
+.live-cta {
+  margin-left: auto;
+  background: var(--red);
+  color: #fff;
+  text-decoration: none;
+  font-weight: 700;
+  font-size: 14px;
+  padding: 10px 16px;
+  border-radius: 10px;
+  white-space: nowrap;
+}
+.stage-banner {
+  display: none;
+}
 .desc-box {
   background: #272727;
   border-radius: 12px;
@@ -208,4 +223,140 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
 @media (max-width: 980px) {
   .main-wrap { grid-template-columns: 1fr; }
   .chat-side { height: 70vh; position: static; }
+  .live-cta { margin-left: 0; width: 100%; text-align: center; }
+}
+
+/* --- Modelos de sala --- */
+.tpl-classroom {
+  --bg: #071525;
+  --panel: #10253d;
+  --chat: #0a1c30;
+  --line: #1e3a57;
+  --blue: #f0c75e;
+  background: #071525;
+}
+.tpl-classroom .topbar {
+  background: #0a2340;
+  border-bottom: 2px solid #c9a227;
+}
+.tpl-classroom .live-badge { background: #c9a227; color: #111; }
+.tpl-classroom .live-badge::before { content: "▸ "; }
+.tpl-classroom .stage-banner {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 12px 16px 0;
+  color: #f0c75e;
+  font-size: 13px;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+.tpl-classroom .stage-banner strong {
+  color: #fff;
+  text-transform: none;
+  letter-spacing: 0;
+  font-size: 16px;
+}
+.tpl-classroom .desc-box { background: #10253d; border: 1px solid #1e3a57; }
+.tpl-classroom .chat-side { border-color: #1e3a57; background: #0a1c30; }
+.tpl-classroom .live-cta { background: #c9a227; color: #111; }
+
+.tpl-webinar {
+  --bg: #101218;
+  --chat: #151821;
+  --line: #2c3344;
+  --blue: #5b8cff;
+  background:
+    radial-gradient(1200px 400px at 50% -80px, rgba(91,140,255,.22), transparent 70%),
+    #101218;
+}
+.tpl-webinar .topbar {
+  background: linear-gradient(90deg, #151821, #1b2436);
+  border-bottom-color: #3d4d6e;
+}
+.tpl-webinar .stage-banner {
+  display: flex;
+  justify-content: center;
+  gap: 12px;
+  align-items: baseline;
+  padding: 14px 16px 0;
+  color: #9db4ff;
+  font-size: 12px;
+  letter-spacing: .12em;
+  text-transform: uppercase;
+}
+.tpl-webinar .stage-banner strong { color: #fff; letter-spacing: 0; text-transform: none; font-size: 18px; }
+.tpl-webinar .player-wrap {
+  border-radius: 4px;
+  box-shadow: 0 20px 50px rgba(0,0,0,.35);
+}
+.tpl-webinar .live-badge { background: #5b8cff; }
+.tpl-webinar .live-cta {
+  background: #5b8cff;
+  color: #0b1020;
+  border-radius: 999px;
+  padding: 11px 22px;
+}
+.tpl-webinar .chat-side { border-radius: 4px; background: #151821; }
+
+.tpl-theater {
+  --bg: #050505;
+  --chat: #0a0a0a;
+  --line: #222;
+  background: #050505;
+}
+.tpl-theater .topbar { background: #000; border-bottom-color: #1a1a1a; }
+.tpl-theater .main-wrap {
+  max-width: none;
+  grid-template-columns: minmax(0, 1fr) 300px;
+  gap: 12px;
+  padding: 8px 12px 16px;
+}
+.tpl-theater .player-wrap { border-radius: 0; }
+.tpl-theater .video-title { font-size: 18px; }
+.tpl-theater .chat-side {
+  border-radius: 0;
+  height: calc(100vh - 80px);
+  background: #0a0a0a;
+}
+.tpl-theater .desc-box { background: #141414; }
+.tpl-theater .live-cta { background: #fff; color: #111; border-radius: 2px; }
+
+.tpl-meetup {
+  --bg: #16141f;
+  --panel: #221f2e;
+  --chat: #1c1a27;
+  --line: #3a3548;
+  --blue: #7ee0a6;
+  background: #16141f;
+}
+.tpl-meetup .topbar {
+  background: #1c1a27;
+  border-bottom: 0;
+}
+.tpl-meetup .stage-banner {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 16px 16px 0;
+  color: #7ee0a6;
+  font-size: 13px;
+}
+.tpl-meetup .stage-banner strong { color: #fff; font-size: 18px; }
+.tpl-meetup .player-wrap,
+.tpl-meetup .chat-side,
+.tpl-meetup .desc-box {
+  border-radius: 22px;
+  box-shadow: 0 12px 40px rgba(0,0,0,.25);
+}
+.tpl-meetup .chat-side { border: 0; background: #1c1a27; }
+.tpl-meetup .live-badge { background: #7ee0a6; color: #102018; }
+.tpl-meetup .live-cta { background: #7ee0a6; color: #102018; border-radius: 999px; }
+
+@media (max-width: 980px) {
+  .tpl-theater .main-wrap { grid-template-columns: 1fr; }
 }

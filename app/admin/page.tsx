@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
+import { getPageTemplate } from "@/lib/templates";
 
 export default async function AdminHome() {
   const pages = await db.page.findMany({
@@ -25,16 +26,18 @@ export default async function AdminHome() {
           <thead className="bg-[#171a21] text-[#9aa0a6]">
             <tr>
               <th className="px-4 py-3 font-medium">Título</th>
+              <th className="px-4 py-3 font-medium">Modelo</th>
               <th className="px-4 py-3 font-medium">Slug</th>
               <th className="px-4 py-3 font-medium">Status</th>
               <th className="px-4 py-3 font-medium">Modo</th>
               <th className="px-4 py-3 font-medium">Chat</th>
+              <th className="px-4 py-3 font-medium">Funil</th>
             </tr>
           </thead>
           <tbody>
             {pages.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-4 py-10 text-center text-[#9aa0a6]">
+                <td colSpan={7} className="px-4 py-10 text-center text-[#9aa0a6]">
                   Nenhuma página ainda. Crie a primeira.
                 </td>
               </tr>
@@ -46,6 +49,7 @@ export default async function AdminHome() {
                       {p.title}
                     </Link>
                   </td>
+                  <td className="px-4 py-3 text-[#9aa0a6]">{getPageTemplate(p.template).name}</td>
                   <td className="px-4 py-3 text-[#9aa0a6]">
                     {p.status === "published" ? (
                       <a className="underline" href={`/${p.slug}`} target="_blank" rel="noreferrer">
@@ -59,6 +63,11 @@ export default async function AdminHome() {
                   <td className="px-4 py-3">{p.mode === "real" ? "Real" : "Simulação"}</td>
                   <td className="px-4 py-3 text-[#9aa0a6]">
                     {p._count.comments} reais · {p._count.commentEvents} IA · {p._count.visitors} usuários
+                  </td>
+                  <td className="px-4 py-3">
+                    <Link href={`/admin/pages/${p.id}/stats`} className="text-[#3ea6ff]">
+                      Estatísticas
+                    </Link>
                   </td>
                 </tr>
               ))

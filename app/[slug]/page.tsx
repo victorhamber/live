@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { initials, linkifyHtml } from "@/lib/utils";
 import { getAppSettings } from "@/lib/settings";
+import { getPageTemplate } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
 
@@ -24,7 +25,7 @@ export default async function LivePage({ params }: Props) {
   const { slug } = await params;
   const page = await db.page.findUnique({
     where: { slug },
-    include: { agent: true },
+    include: { agent: true, actions: true },
   });
   if (!page || page.status !== "published") notFound();
 
@@ -32,6 +33,13 @@ export default async function LivePage({ params }: Props) {
   const logoUrl = settings.logoMimeType
     ? `/api/branding/logo?v=${settings.updatedAt.getTime()}`
     : "";
+  const tpl = getPageTemplate(page.template);
+  const actionCta = page.actions.find((item) => item.url);
+  const cta = page.ctaUrl
+    ? { label: page.ctaLabel || "Quero participar", url: page.ctaUrl }
+    : actionCta
+      ? { label: actionCta.label || "Saiba mais", url: actionCta.url }
+      : null;
 
   const config = {
     slug: page.slug,
@@ -39,114 +47,136 @@ export default async function LivePage({ params }: Props) {
     mode: page.mode,
     agentName: page.agent?.name || "Suporte",
     agentAvatar: page.agent?.avatar || initials(page.agent?.name || "SP"),
+    template: tpl.id,
+    viewsLabel: tpl.viewsLabel,
   };
 
   return (
     <>
-      <link rel="stylesheet" href="/live.css?v=4" />
-      <div className="topbar">
-        <a className="yt-logo" href="#">
-          {page.brandName}
-        </a>
-        <div className="topbar-right">
-          {logoUrl ? (
-            <span className="site-logo">
-              <img src={logoUrl} alt={page.brandName} width={32} height={32} />
-            </span>
-          ) : (
-            <div className="topbar-avatar">{page.channelAvatar || "AT"}</div>
-          )}
-        </div>
-      </div>
-
-      <div className="main-wrap">
-        <div className="video-side">
-          <div className="player-wrap">
-            <div className="live-overlay">
-              <div className="live-badge">Ao vivo</div>
-              <div className="viewers-badge">
-                <span className="viewers-dot" />
-                <span id="viewer-count">{page.viewersBase.toLocaleString("pt-BR")}</span> assistindo agora
-              </div>
-            </div>
-            {page.vturbPlayerId ? (
-              <>
-                <div
-                  dangerouslySetInnerHTML={{
-                    __html: `<vturb-smartplayer id="${page.vturbPlayerId}" style="display:block;margin:0 auto;width:100%;"></vturb-smartplayer>`,
-                  }}
-                />
-                {page.vturbScriptUrl ? (
-                  <script src={page.vturbScriptUrl} async />
-                ) : null}
-              </>
+      <link rel="stylesheet" href="/live.css?v=5" />
+      <div className={`live-root tpl-${tpl.id}`} id="live-root" data-template={tpl.id}>
+        <div className="topbar">
+          <a className="yt-logo" href="#">
+            {page.brandName}
+          </a>
+          <div className="topbar-right">
+            {logoUrl ? (
+              <span className="site-logo">
+                <img src={logoUrl} alt={page.brandName} width={32} height={32} />
+              </span>
             ) : (
-              <div className="player-fallback">Player não configurado</div>
+              <div className="topbar-avatar">{page.channelAvatar || "AT"}</div>
             )}
           </div>
-
-          <div className="video-info">
-            <div className="video-title">{page.videoTitle || page.title}</div>
-            <div className="channel-row">
-              {logoUrl ? (
-                <span className="site-logo">
-                  <img src={logoUrl} alt="" width={32} height={32} />
-                </span>
-              ) : (
-                <div className="channel-avatar">{page.channelAvatar || "AT"}</div>
-              )}
-              <div>
-                <div className="channel-name">{page.channelName || page.brandName}</div>
-                <div className="channel-subs">{page.channelHandle || "Transmissão ao vivo"}</div>
-              </div>
-            </div>
-            <div className="desc-box" id="desc-box">
-              <div className="desc-meta">
-                <strong id="desc-views-label">
-                  {page.viewersBase.toLocaleString("pt-BR")} visualizações ao vivo
-                </strong>
-                <span>Há alguns momentos</span>
-              </div>
-              <div
-                className="desc-text"
-                id="desc-text"
-                dangerouslySetInnerHTML={{ __html: linkifyHtml(page.description) }}
-              />
-              <div className="desc-toggle-btn" id="desc-toggle">
-                Mostrar menos
-              </div>
-            </div>
-          </div>
         </div>
 
-        <div className="chat-side">
-          <div className="chat-header">
-            <span className="live-dot" />
-            Chat ao vivo
-            <span className="chat-viewers-count">
-              (<span id="chat-viewers">{page.viewersBase.toLocaleString("pt-BR")}</span>)
-            </span>
+        {tpl.stageLabel ? (
+          <div className="stage-banner">
+            <span>{tpl.stageLabel}</span>
+            <strong>{page.videoTitle || page.title}</strong>
           </div>
-          <div className="chat-messages" id="chat-messages" />
-          <div className="chat-input-area">
-            <div className="chat-input-row">
-              <div className="chat-input-avatar" id="user-avatar">
-                VC
+        ) : null}
+
+        <div className="main-wrap">
+          <div className="video-side">
+            <div className="player-wrap">
+              <div className="live-overlay">
+                <div className="live-badge">{tpl.badge}</div>
+                <div className="viewers-badge">
+                  <span className="viewers-dot" />
+                  <span id="viewer-count">{page.viewersBase.toLocaleString("pt-BR")}</span> assistindo agora
+                </div>
               </div>
-              <input
-                type="text"
-                className="chat-input"
-                id="chat-input"
-                placeholder="Envie uma mensagem..."
-                maxLength={200}
-              />
-              <button className="send-btn" id="send-btn" type="button" aria-label="Enviar">
-                <svg viewBox="0 0 24 24" fill="currentColor">
-                  <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
-                </svg>
-              </button>
+              {page.vturbPlayerId ? (
+                <>
+                  <div
+                    dangerouslySetInnerHTML={{
+                      __html: `<vturb-smartplayer id="${page.vturbPlayerId}" style="display:block;margin:0 auto;width:100%;"></vturb-smartplayer>`,
+                    }}
+                  />
+                  {page.vturbScriptUrl ? (
+                    <script src={page.vturbScriptUrl} async />
+                  ) : null}
+                </>
+              ) : (
+                <div className="player-fallback">Player não configurado</div>
+              )}
             </div>
-            <div className="chat-note">{page.chatNote}</div>
+
+            <div className="video-info">
+              <div className="video-title">{page.videoTitle || page.title}</div>
+              <div className="channel-row">
+                {logoUrl ? (
+                  <span className="site-logo">
+                    <img src={logoUrl} alt="" width={32} height={32} />
+                  </span>
+                ) : (
+                  <div className="channel-avatar">{page.channelAvatar || "AT"}</div>
+                )}
+                <div>
+                  <div className="channel-name">{page.channelName || page.brandName}</div>
+                  <div className="channel-subs">{page.channelHandle || "Transmissão ao vivo"}</div>
+                </div>
+                {cta ? (
+                  <a
+                    className="live-cta"
+                    data-track-label="CTA"
+                    href={cta.url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {cta.label}
+                  </a>
+                ) : null}
+              </div>
+              <div className="desc-box" id="desc-box">
+                <div className="desc-meta">
+                  <strong id="desc-views-label">
+                    {page.viewersBase.toLocaleString("pt-BR")} {tpl.viewsLabel}
+                  </strong>
+                  <span>Há alguns momentos</span>
+                </div>
+                <div
+                  className="desc-text"
+                  id="desc-text"
+                  dangerouslySetInnerHTML={{ __html: linkifyHtml(page.description) }}
+                />
+                <div className="desc-toggle-btn" id="desc-toggle">
+                  Mostrar menos
+                </div>
+              </div>
+            </div>
+          </div>
+
+          <div className="chat-side">
+            <div className="chat-header">
+              <span className="live-dot" />
+              {tpl.chatTitle}
+              <span className="chat-viewers-count">
+                (<span id="chat-viewers">{page.viewersBase.toLocaleString("pt-BR")}</span>)
+              </span>
+            </div>
+            <div className="chat-messages" id="chat-messages" />
+            <div className="chat-input-area">
+              <div className="chat-input-row">
+                <div className="chat-input-avatar" id="user-avatar">
+                  VC
+                </div>
+                <input
+                  type="text"
+                  className="chat-input"
+                  id="chat-input"
+                  placeholder={tpl.inputPlaceholder}
+                  maxLength={200}
+                />
+                <button className="send-btn" id="send-btn" type="button" aria-label="Enviar">
+                  <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M2.01 21L23 12 2.01 3 2 10l15 2-15 2z" />
+                  </svg>
+                </button>
+              </div>
+              <div className="chat-note">{page.chatNote}</div>
+            </div>
           </div>
         </div>
       </div>
@@ -168,7 +198,7 @@ export default async function LivePage({ params }: Props) {
           __html: `window.__LIVE__=${JSON.stringify(config)};`,
         }}
       />
-      <script src="/live.js?v=7" defer />
+      <script src="/live.js?v=8" defer />
     </>
   );
 }

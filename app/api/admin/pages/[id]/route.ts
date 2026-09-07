@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError, parseTranscript, slugify } from "@/lib/utils";
 import { dropOrphanAgentReplies } from "@/lib/scripted-replies";
+import { isPageTemplate } from "@/lib/templates";
 
 async function guard() {
   try {
@@ -72,6 +73,9 @@ export async function PUT(request: NextRequest, ctx: Ctx) {
       viewersBase: Number(body.viewersBase ?? current.viewersBase),
       chatNote: body.chatNote ?? current.chatNote,
       aiInstructions: body.aiInstructions ?? current.aiInstructions,
+      template: isPageTemplate(body.template) ? body.template : current.template,
+      ctaLabel: body.ctaLabel != null ? String(body.ctaLabel) : current.ctaLabel,
+      ctaUrl: body.ctaUrl != null ? String(body.ctaUrl) : current.ctaUrl,
       agent: {
         upsert: {
           create: {

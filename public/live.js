@@ -1,6 +1,7 @@
 (function () {
   const cfg = window.__LIVE__ || {};
   const MAX = 90;
+  const ANON_KEY = "live_anon_id";
   const seen = new Set();
   const pendingMine = new Set();
   let viewers = Number(cfg.viewersBase || 2284);
@@ -10,6 +11,8 @@
   let descExpanded = true;
   let lastFeedT = -1;
   let sending = false;
+  let visitId = "";
+  let identifiedSent = false;
 
   const $ = (id) => document.getElementById(id);
   const initials = (name) =>
@@ -19,6 +22,21 @@
       .slice(0, 2)
       .join("")
       .toUpperCase();
+
+  function getAnonId() {
+    try {
+      let id = localStorage.getItem(ANON_KEY);
+      if (!id) {
+        id = crypto.randomUUID();
+        localStorage.setItem(ANON_KEY, id);
+      }
+      return id;
+    } catch (e) {
+      return "anon-" + Math.random().toString(36).slice(2) + Date.now().toString(36);
+    }
+  }
+
+  const anonId = getAnonId();
 
   function sanitize(s) {
     const d = document.createElement("div");
@@ -62,6 +80,60 @@
       }
     } catch (e) {}
     return elapsedFallback;
+  }
+
+  function track(type, extra) {
+    const payload = {
+      type: type,
+      anonId: anonId,
+      visitId: visitId || undefined,
+      referrer: document.referrer || "",
+      label: extra && extra.label,
+      url: extra && extra.url,
+    };
+    const body = JSON.stringify(payload);
+    const endpoint = "/api/p/" + encodeURIComponent(cfg.slug) + "/track";
+    if ((type === "leave" || type === "heartbeat") && navigator.sendBeacon && document.visibilityState === "hidden") {
+      try {
+        navigator.sendBeacon(endpoint, new Blob([body], { type: "application/json" }));
+        return;
+      } catch (e) {}
+    }
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: body,
+      keepalive: type === "leave",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        if (data && data.visitId) visitId = data.visitId;
+      })
+      .catch(function () {});
+  }
+
+  function bindTracking() {
+    document.addEventListener(
+      "click",
+      function (e) {
+        const a = e.target.closest("a[href]");
+        if (!a) return;
+        const href = a.getAttribute("href") || "";
+        if (!href || href === "#" || href.indexOf("javascript:") === 0) return;
+        const label = (a.getAttribute("data-track-label") || a.textContent || "").trim().slice(0, 80);
+        track("click", { label: label || "link", url: href });
+      },
+      true
+    );
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "hidden") track("heartbeat");
+    });
+    window.addEventListener("pagehide", function () {
+      track("leave");
+    });
+    setInterval(function () {
+      if (!document.hidden) track("heartbeat");
+    }, 15000);
   }
 
   function appendMsg({ name, text, authorType, mine, isSuperchat, superAmount, color }, scroll) {
@@ -147,8 +219,13 @@
       if (!res.ok) return;
       const data = await res.json();
       if (data.visitor) {
+        const first = !visitor;
         visitor = data.visitor;
         $("user-avatar").textContent = initials(visitor.name);
+        if (first && !identifiedSent) {
+          identifiedSent = true;
+          track("identify");
+        }
       }
       const merged = []
         .concat(data.events || [], data.comments || [])
@@ -243,6 +320,7 @@
       seen.add("comment:" + data.comment.id);
       pendingMine.delete(text);
     }
+    track("comment");
     burstPoll();
     return true;
   }
@@ -252,16 +330,19 @@
   }
 
   function fluctuateViewers() {
+    const viewsLabel = cfg.viewsLabel || "visualizações ao vivo";
     setInterval(() => {
       viewers = Math.max(Math.floor(cfg.viewersBase * 0.82), viewers + Math.floor(Math.random() * 40) - 14);
       const fmt = viewers.toLocaleString("pt-BR");
       $("viewer-count").textContent = fmt;
       $("chat-viewers").textContent = fmt;
-      $("desc-views-label").textContent = fmt + " visualizações ao vivo";
+      $("desc-views-label").textContent = fmt + " " + viewsLabel;
     }, 3800);
   }
 
   function init() {
+    track("pageview");
+    bindTracking();
     $("desc-box").addEventListener("click", (e) => {
       if (e.target.closest("a")) return;
       descExpanded = !descExpanded;
@@ -280,6 +361,10 @@
       visitor = { name, email };
       $("user-avatar").textContent = initials(name);
       closeIdentity();
+      if (!identifiedSent) {
+        identifiedSent = true;
+        track("identify");
+      }
       const text = pendingText;
       pendingText = "";
       clearInput();
