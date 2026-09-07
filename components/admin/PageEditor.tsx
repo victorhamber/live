@@ -1,8 +1,8 @@
 "use client";
 
-import { FormEvent, useMemo, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
-import { PAGE_TEMPLATES } from "@/lib/templates";
+import { CUSTOM_STARTER_HTML, PAGE_TEMPLATES } from "@/lib/templates";
 
 type LinkItem = { label: string; url: string };
 type ActionItem = { key: string; label: string; url: string };
@@ -34,6 +34,7 @@ type PagePayload = {
   template: string;
   ctaLabel: string;
   ctaUrl: string;
+  customHtml: string;
   language: string;
   viewersBase: number;
   chatNote: string;
@@ -88,6 +89,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     template: initial.template || "youtube",
     ctaLabel: initial.ctaLabel || "",
     ctaUrl: initial.ctaUrl || "",
+    customHtml: initial.customHtml || "",
     language: initial.language,
     viewersBase: initial.viewersBase,
     chatNote: initial.chatNote,
@@ -118,6 +120,15 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
         ]) as ActionItem[],
   });
   const [events, setEvents] = useState(initial.commentEvents);
+  const [files, setFiles] = useState<string[]>([]);
+  const [uploading, setUploading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/admin/pages/${initial.id}/custom`)
+      .then((res) => res.json())
+      .then((data) => setFiles(data.files || []))
+      .catch(() => undefined);
+  }, [initial.id]);
 
   const payload = useMemo(() => form, [form]);
 
@@ -206,6 +217,38 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     setForm((f) => ({ ...f, [key]: value }));
   }
 
+  async function uploadCustom(file: File) {
+    setUploading(true);
+    setMessage("");
+    const body = new FormData();
+    body.append("file", file);
+    const res = await fetch(`/api/admin/pages/${initial.id}/custom`, { method: "POST", body });
+    const data = await res.json().catch(() => ({}));
+    setUploading(false);
+    if (!res.ok) {
+      setMessage(data.error || "Falha ao enviar o site");
+      return;
+    }
+    set("template", "custom");
+    if (typeof data.customHtml === "string") set("customHtml", data.customHtml);
+    setFiles(data.files || []);
+    setMessage(data.files?.length ? `Site importado · ${data.files.length} arquivos` : "HTML importado");
+  }
+
+  async function clearCustomFiles() {
+    if (!confirm("Remover os arquivos enviados deste site?")) return;
+    const body = new FormData();
+    body.append("action", "clear");
+    const res = await fetch(`/api/admin/pages/${initial.id}/custom`, { method: "POST", body });
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setMessage(data.error || "Não foi possível limpar");
+      return;
+    }
+    setFiles([]);
+    setMessage("Arquivos removidos");
+  }
+
   return (
     <form onSubmit={save} className="max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -258,7 +301,10 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                     <button
                       type="button"
                       key={tpl.id}
-                      onClick={() => set("template", tpl.id)}
+                      onClick={() => {
+                        set("template", tpl.id);
+                        if (tpl.id === "custom" && !form.customHtml) set("customHtml", CUSTOM_STARTER_HTML);
+                      }}
                       className={`rounded-xl border p-3 text-left ${active ? "border-[#3ea6ff] bg-[#3ea6ff]/10" : "border-[#2a2f3a] bg-[#0f1115]"}`}
                     >
                       <div className="text-sm font-semibold">{tpl.name}</div>
@@ -268,6 +314,56 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                 })}
               </div>
             </div>
+            {form.template === "custom" ? (
+              <div className="rounded-xl border border-[#2a2f3a] bg-[#0f1115] p-4">
+                <p className="text-sm font-medium">Site personalizado</p>
+                <p className="mt-1 text-sm text-[#9aa0a6]">
+                  Envie um arquivo <strong>.html</strong> ou um <strong>.zip</strong> com o site inteiro (HTML, CSS, JS e imagens).
+                  Use <code className="text-[#3ea6ff]">{"{{player}}"}</code>, <code className="text-[#3ea6ff]">{"{{cta}}"}</code>,{" "}
+                  <code className="text-[#3ea6ff]">{"{{chat}}"}</code>, <code className="text-[#3ea6ff]">{"{{title}}"}</code> e{" "}
+                  <code className="text-[#3ea6ff]">{"{{description}}"}</code> se quiser encaixar o player, o botão ou o chat da live.
+                </p>
+                <label className="mt-3 block text-sm">
+                  HTML ou ZIP
+                  <input
+                    className="mt-1 block w-full text-sm"
+                    type="file"
+                    accept=".html,.htm,.zip"
+                    disabled={uploading}
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) uploadCustom(file);
+                      e.target.value = "";
+                    }}
+                  />
+                </label>
+                {uploading ? <p className="mt-2 text-sm text-[#9aa0a6]">Enviando...</p> : null}
+                {files.length ? (
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-sm text-[#9aa0a6]">{files.length} arquivos no site</p>
+                      <button type="button" className="text-sm text-[#f87171]" onClick={clearCustomFiles}>
+                        Limpar arquivos
+                      </button>
+                    </div>
+                    <div className="mt-2 max-h-32 overflow-auto rounded-lg border border-[#2a2f3a] p-2 font-mono text-xs text-[#9aa0a6]">
+                      {files.map((file) => (
+                        <div key={file}>{file}</div>
+                      ))}
+                    </div>
+                  </div>
+                ) : null}
+                <label className="mt-4 grid gap-1 text-sm">
+                  HTML da página
+                  <textarea
+                    className={fieldClass() + " min-h-[320px] font-mono text-xs"}
+                    value={form.customHtml}
+                    onChange={(e) => set("customHtml", e.target.value)}
+                    placeholder="Cole o HTML aqui ou envie um arquivo"
+                  />
+                </label>
+              </div>
+            ) : null}
             <label className="grid gap-1 text-sm">Título interno<input className={fieldClass()} value={form.title} onChange={(e) => set("title", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Slug<input className={fieldClass()} value={form.slug} onChange={(e) => set("slug", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Título do vídeo<input className={fieldClass()} value={form.videoTitle} onChange={(e) => set("videoTitle", e.target.value)} /></label>

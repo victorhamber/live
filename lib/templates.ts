@@ -49,7 +49,41 @@ export const PAGE_TEMPLATES = [
     inputPlaceholder: "Participe da conversa...",
     viewsLabel: "pessoas na sala",
   },
+  {
+    id: "custom",
+    name: "Personalizado",
+    description: "Envie um HTML ou o ZIP do site inteiro. A sala usa o seu layout, não os modelos prontos.",
+    badge: "Ao vivo",
+    chatTitle: "Chat",
+    stageLabel: "",
+    inputPlaceholder: "Envie uma mensagem...",
+    viewsLabel: "visualizações",
+  },
 ] as const;
+
+export const CUSTOM_STARTER_HTML = `<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>{{title}}</title>
+  <style>
+    body { margin: 0; font-family: Arial, sans-serif; background: #0f0f0f; color: #f1f1f1; }
+    .wrap { max-width: 960px; margin: 0 auto; padding: 24px 16px 48px; }
+    .player { background: #000; border-radius: 12px; overflow: hidden; aspect-ratio: 16 / 9; }
+    .cta { display: block; margin: 20px 0; background: #e11d48; color: #fff; text-align: center; text-decoration: none; font-weight: 700; padding: 14px 20px; border-radius: 10px; }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>{{title}}</h1>
+    <div class="player">{{player}}</div>
+    {{cta}}
+    <div>{{description}}</div>
+  </div>
+</body>
+</html>
+`;
 
 export type PageTemplateId = (typeof PAGE_TEMPLATES)[number]["id"];
 

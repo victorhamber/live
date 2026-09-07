@@ -36,6 +36,7 @@ model Page {
   template       String   @default("youtube")
   ctaLabel       String   @default("")
   ctaUrl         String   @default("")
+  customHtml     String   @default("")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 

@@ -67,6 +67,7 @@
 
   function showToast(msg) {
     const t = $("toast");
+    if (!t) return;
     t.textContent = msg;
     t.classList.add("show");
     setTimeout(() => t.classList.remove("show"), 2500);
@@ -334,27 +335,30 @@
     setInterval(() => {
       viewers = Math.max(Math.floor(cfg.viewersBase * 0.82), viewers + Math.floor(Math.random() * 40) - 14);
       const fmt = viewers.toLocaleString("pt-BR");
-      $("viewer-count").textContent = fmt;
-      $("chat-viewers").textContent = fmt;
-      $("desc-views-label").textContent = fmt + " " + viewsLabel;
+      if ($("viewer-count")) $("viewer-count").textContent = fmt;
+      if ($("chat-viewers")) $("chat-viewers").textContent = fmt;
+      if ($("desc-views-label")) $("desc-views-label").textContent = fmt + " " + viewsLabel;
     }, 3800);
   }
 
   function init() {
     track("pageview");
     bindTracking();
-    $("desc-box").addEventListener("click", (e) => {
-      if (e.target.closest("a")) return;
-      descExpanded = !descExpanded;
-      $("desc-text").classList.toggle("collapsed", !descExpanded);
-      $("desc-toggle").textContent = descExpanded ? "Mostrar menos" : "...mais";
-    });
+    if ($("desc-box")) {
+      $("desc-box").addEventListener("click", (e) => {
+        if (e.target.closest("a")) return;
+        descExpanded = !descExpanded;
+        if ($("desc-text")) $("desc-text").classList.toggle("collapsed", !descExpanded);
+        if ($("desc-toggle")) $("desc-toggle").textContent = descExpanded ? "Mostrar menos" : "...mais";
+      });
+    }
+    if (!$("chat-input") || !$("send-btn")) return;
     $("chat-input").addEventListener("keydown", (e) => {
       if (e.key === "Enter") sendUserMsg();
     });
     $("chat-input").addEventListener("input", (e) => toggleSend(e.target));
     $("send-btn").addEventListener("click", sendUserMsg);
-    $("identity-submit").addEventListener("click", async () => {
+    if ($("identity-submit")) $("identity-submit").addEventListener("click", async () => {
       const name = $("identity-name").value.trim();
       const email = $("identity-email").value.trim();
       if (!name || !email) return showToast("Preencha nome e e-mail");

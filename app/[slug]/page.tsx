@@ -29,6 +29,23 @@ export default async function LivePage({ params }: Props) {
   });
   if (!page || page.status !== "published") notFound();
 
+  if (page.template === "custom") {
+    return (
+      <iframe
+        src={`/api/p/${page.slug}/site`}
+        title={page.videoTitle || page.title}
+        style={{
+          position: "fixed",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          border: 0,
+          background: "#000",
+        }}
+      />
+    );
+  }
+
   const settings = await getAppSettings();
   const logoUrl = settings.logoMimeType
     ? `/api/branding/logo?v=${settings.updatedAt.getTime()}`
