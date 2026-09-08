@@ -234,5 +234,6 @@ model AppSettings {
   openaiModel       String   @default("gpt-4o-mini")
   logoMimeType      String   @default("")
   leadWebhookSecret String   @default("")
+  customHeadHtml    String   @default("")
   updatedAt         DateTime @updatedAt
 }

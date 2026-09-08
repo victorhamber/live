@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { buildCustomHtml } from "@/lib/custom-site";
 import { isCustomHtmlReady, pageIsViewable } from "@/lib/pages";
+import { getAppSettings } from "@/lib/settings";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -15,6 +16,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     return new Response("Não encontrado", { status: 404 });
   }
 
+  const settings = await getAppSettings();
   const html = buildCustomHtml({
     slug: page.slug,
     title: page.title,
@@ -31,6 +33,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     channelAvatar: page.channelAvatar,
     agent: page.agent,
     actions: page.actions,
+    headHtml: settings.customHeadHtml,
   });
 
   return new Response(html, {

@@ -3,6 +3,7 @@ import path from "path";
 import AdmZip from "adm-zip";
 import { initials } from "@/lib/utils";
 import { CUSTOM_STARTER_HTML, getPageTemplate } from "@/lib/templates";
+import { injectHeadHtml } from "@/lib/head-html";
 
 const ALLOWED_EXT = new Set([
   ".html",
@@ -72,6 +73,7 @@ export type CustomPageInput = {
   channelAvatar: string;
   agent?: { name: string; avatar: string } | null;
   actions?: { label: string; url: string }[];
+  headHtml?: string;
 };
 
 export function customSiteRoot(pageId: string) {
@@ -227,7 +229,10 @@ function injectRuntime(html: string, page: CustomPageInput) {
 
 export function buildCustomHtml(page: CustomPageInput) {
   const source = page.customHtml.trim() || CUSTOM_STARTER_HTML;
-  return injectRuntime(rewriteAssetUrls(applyPlaceholders(source, page), page.slug), page);
+  return injectRuntime(
+    injectHeadHtml(rewriteAssetUrls(applyPlaceholders(source, page), page.slug), page.headHtml || ""),
+    page
+  );
 }
 
 export function extractCustomZip(pageId: string, zipBuffer: Buffer) {

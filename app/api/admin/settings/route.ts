@@ -4,6 +4,7 @@ import { jsonError } from "@/lib/utils";
 import { getAppSettings, invalidateAppSettings, isMaskedKey, maskApiKey, ensureAppLeadWebhookSecret } from "@/lib/settings";
 import { db } from "@/lib/db";
 import { newWebhookSecret } from "@/lib/leads";
+import { clipHeadHtml } from "@/lib/head-html";
 
 async function guard() {
   try {
@@ -24,6 +25,7 @@ export async function GET() {
     hasLogo: Boolean(settings.logoMimeType),
     logoUrl: settings.logoMimeType ? `/api/branding/logo?v=${settings.updatedAt.getTime()}` : "",
     leadWebhookSecret,
+    customHeadHtml: settings.customHeadHtml,
   });
 }
 
@@ -53,9 +55,12 @@ export async function PUT(request: NextRequest) {
     leadWebhookSecret = newWebhookSecret();
   }
 
+  const customHeadHtml =
+    typeof body?.customHeadHtml === "string" ? clipHeadHtml(body.customHeadHtml) : current.customHeadHtml;
+
   const settings = await db.appSettings.update({
     where: { id: current.id },
-    data: { openaiApiKey, openaiModel, leadWebhookSecret },
+    data: { openaiApiKey, openaiModel, leadWebhookSecret, customHeadHtml },
   });
   invalidateAppSettings();
 
@@ -64,5 +69,6 @@ export async function PUT(request: NextRequest) {
     openaiModel: settings.openaiModel,
     hasKey: Boolean(settings.openaiApiKey.trim()),
     leadWebhookSecret: settings.leadWebhookSecret,
+    customHeadHtml: settings.customHeadHtml,
   });
 }

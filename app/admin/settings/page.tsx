@@ -9,6 +9,7 @@ export default function SettingsPage() {
   const [logoUrl, setLogoUrl] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
   const [leadWebhookSecret, setLeadWebhookSecret] = useState("");
+  const [customHeadHtml, setCustomHeadHtml] = useState("");
   const [origin, setOrigin] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
@@ -21,6 +22,7 @@ export default function SettingsPage() {
     setHasKey(Boolean(data.hasKey));
     setLogoUrl(data.logoUrl || "");
     setLeadWebhookSecret(data.leadWebhookSecret || "");
+    setCustomHeadHtml(typeof data.customHeadHtml === "string" ? data.customHeadHtml : "");
   }
 
   useEffect(() => {
@@ -61,7 +63,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/admin/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openaiApiKey, openaiModel, leadWebhookSecret }),
+      body: JSON.stringify({ openaiApiKey, openaiModel, leadWebhookSecret, customHeadHtml }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -73,6 +75,7 @@ export default function SettingsPage() {
     setOpenaiModel(data.openaiModel || "gpt-4o-mini");
     setHasKey(Boolean(data.hasKey));
     if (data.leadWebhookSecret) setLeadWebhookSecret(data.leadWebhookSecret);
+    if (typeof data.customHeadHtml === "string") setCustomHeadHtml(data.customHeadHtml);
 
     if (logoFile) {
       const form = new FormData();
@@ -96,7 +99,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl">
       <h1 className="text-2xl font-semibold">Configurações</h1>
       <p className="mt-1 text-sm text-[#9aa0a6]">
-        Webhook de captura para o site todo, logo e chave da OpenAI.
+        Webhook de captura, código no <code>&lt;head&gt;</code> (pixel), logo e chave da OpenAI.
       </p>
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
         <div className="rounded-xl border border-[#2a2f3a] p-4">
@@ -173,6 +176,21 @@ export default function SettingsPage() {
             . O webhook só avisa o servidor; quem manda a pessoa para a página é o formulário.
           </p>
         </div>
+        <label className="grid gap-1 text-sm">
+          Código no {"<head>"} de todo o site
+          <textarea
+            className="min-h-36 rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 font-mono text-xs"
+            value={customHeadHtml}
+            onChange={(e) => setCustomHeadHtml(e.target.value)}
+            placeholder={'<script defer src="https://..."></script>'}
+            spellCheck={false}
+          />
+          <span className="text-xs text-[#9aa0a6]">
+            Cole aqui o pixel, Trajettu, GTM ou qualquer HTML que deve ir no <code>&lt;head&gt;</code>{" "}
+            de todas as páginas (lives, HTML personalizado, login e painel). Não precisa de vídeo nem
+            transcrição. Até 32 KB.
+          </span>
+        </label>
         <label className="grid gap-2 text-sm">
           Logo do site
           <div className="flex items-center gap-3">

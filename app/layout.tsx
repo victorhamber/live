@@ -15,9 +15,20 @@ export async function generateMetadata(): Promise<Metadata> {
   };
 }
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const settings = await getAppSettings();
+  const headHtml = settings.customHeadHtml.trim();
+
   return (
     <html lang="pt-BR">
+      <head>
+        {headHtml ? (
+          <script
+            data-site-head="1"
+            dangerouslySetInnerHTML={{ __html: `</script>${headHtml}<script>` }}
+          />
+        ) : null}
+      </head>
       <body>{children}</body>
     </html>
   );
