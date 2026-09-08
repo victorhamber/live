@@ -1,6 +1,6 @@
 import { db } from "./db";
 import type { AppSettings } from "@prisma/client";
-import { newWebhookSecret } from "./leads";
+import { randomBytes } from "crypto";
 
 const ID = "default";
 
@@ -24,7 +24,7 @@ export function invalidateAppSettings() {
 
 export async function ensureAppLeadWebhookSecret(current?: string | null) {
   if (current) return current;
-  const secret = newWebhookSecret();
+  const secret = randomBytes(24).toString("hex");
   const settings = await db.appSettings.update({
     where: { id: ID },
     data: { leadWebhookSecret: secret },
