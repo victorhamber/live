@@ -33,7 +33,10 @@ function flatten(source: unknown, into: Record<string, unknown> = {}) {
         const rec = item as Record<string, unknown>;
         const key = String(rec.name || rec.key || rec.field || rec.label || "").trim();
         const value = rec.value ?? rec.val ?? rec.answer;
-        if (key && value != null) into[key.toLowerCase()] = value;
+        if (key && value != null && typeof value !== "object") {
+          into[key.toLowerCase()] = value;
+          continue;
+        }
         flatten(item, into);
       }
     }
@@ -41,8 +44,11 @@ function flatten(source: unknown, into: Record<string, unknown> = {}) {
   }
   const rec = source as Record<string, unknown>;
   for (const [key, value] of Object.entries(rec)) {
+    if (value && typeof value === "object") {
+      flatten(value, into);
+      continue;
+    }
     into[key.toLowerCase()] = value;
-    if (value && typeof value === "object") flatten(value, into);
   }
   return into;
 }
@@ -61,8 +67,9 @@ export function parseLeadPayload(input: unknown) {
   const first = pick(map, ["first_name", "firstname", "primeiro_nome", "nome"]);
   const last = pick(map, ["last_name", "lastname", "sobrenome"]);
   const name =
-    pick(map, ["name", "nome", "full_name", "fullname", "nome_completo"]) ||
-    [first, last].filter(Boolean).join(" ").trim();
+    pick(map, ["full_name", "fullname", "nome_completo", "nome"]) ||
+    [first, last].filter(Boolean).join(" ").trim() ||
+    pick(map, ["name"]);
   return { email, name };
 }
 
