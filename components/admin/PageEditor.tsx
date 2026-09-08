@@ -516,14 +516,16 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <div className="rounded-xl border border-[#2a2f3a] p-4">
               <p className="font-medium">Login automático pela Trajettu</p>
               <p className="mt-1 text-sm text-[#9aa0a6]">
-                O webhook de captura agora vale para o site todo. Configure a URL em{" "}
+                O webhook de captura vale para o site todo e fica em{" "}
                 <a className="text-[#3ea6ff] underline" href="/admin/settings">
                   Configurações
                 </a>
-                . Quem já se cadastrou em qualquer página fica identificado nas outras.
+                . O destino depois do cadastro é o que você já escolhe no formulário da Trajettu.
+                Se essa página for o destino, acrescente <code>{`?email={{email}}&name={{name}}`}</code>{" "}
+                na URL para a pessoa já entrar identificada.
               </p>
               <label className="mt-3 grid gap-1 text-sm">
-                URL de redirecionamento desta página
+                Se o formulário mandar para esta página, use esta URL
                 <div className="flex gap-2">
                   <input className={fieldClass()} readOnly value={thankYouUrl} />
                   <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(thankYouUrl)}>
@@ -531,9 +533,6 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                   </button>
                 </div>
               </label>
-              <p className="mt-3 text-sm text-[#9aa0a6]">
-                Use esta URL na ação pós-cadastro da Trajettu se esta for a primeira página do funil. Depois o cookie vale nas outras lives.
-              </p>
             </div>
           </>
         )}

@@ -35,9 +35,7 @@ export default function SettingsPage() {
         : `/api/lead?secret=${leadWebhookSecret}`,
     [origin, leadWebhookSecret]
   );
-  const thankYouUrl = origin
-    ? `${origin}/sua-pagina?email={{email}}&name={{name}}`
-    : `/sua-pagina?email={{email}}&name={{name}}`;
+  const loginQuery = "?email={{email}}&name={{name}}";
 
   async function copyText(text: string) {
     try {
@@ -104,19 +102,21 @@ export default function SettingsPage() {
         <div className="rounded-xl border border-[#2a2f3a] p-4">
           <p className="font-medium">Webhook de captura (site todo)</p>
           <p className="mt-1 text-sm text-[#9aa0a6]">
-            Uma URL só, vale para todas as páginas. Quem se cadastra no funil fica salvo no cookie e
-            não precisa se cadastrar de novo em outro vídeo.
+            Uma URL só, vale para todas as páginas. Cole no webhook extra da Trajettu. O destino
+            depois do cadastro continua sendo o que você já escolhe no formulário — esta tela não
+            troca essa página.
           </p>
           <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-[#9aa0a6]">
             <li>
-              Na Trajettu, abra o formulário e cole a URL do webhook em{" "}
-              <strong className="text-[#e5e7eb]">Webhooks (Opcional)</strong>.
+              Cole a URL do webhook em <strong className="text-[#e5e7eb]">Webhooks (Opcional)</strong>.
             </li>
             <li>
-              Na ação pós-cadastro, escolha <strong className="text-[#e5e7eb]">Redirecionar</strong>{" "}
-              para a página do funil com e-mail e nome na URL.
+              No destino do formulário, mantenha a página que você quiser (funil, VSL, live…).
             </li>
-            <li>Troque <code>sua-pagina</code> pelo slug da primeira página que a pessoa vê.</li>
+            <li>
+              Só acrescente <code>{loginQuery}</code> no final dessa URL de destino, para a pessoa já
+              entrar identificada e o cookie valer nas outras lives.
+            </li>
           </ol>
           <label className="mt-3 grid gap-1 text-sm">
             URL do webhook
@@ -149,26 +149,28 @@ export default function SettingsPage() {
             </div>
           </label>
           <label className="mt-3 grid gap-1 text-sm">
-            URL de redirecionamento na Trajettu
+            Acrescente no final da URL de destino do formulário
             <div className="flex gap-2">
               <input
                 className="w-full rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 font-mono text-xs"
                 readOnly
-                value={thankYouUrl}
+                value={loginQuery}
               />
               <button
                 type="button"
                 className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm"
-                onClick={() => copyText(thankYouUrl)}
+                onClick={() => copyText(loginQuery)}
               >
                 Copiar
               </button>
             </div>
           </label>
           <p className="mt-3 text-sm text-[#9aa0a6]">
-            A Trajettu envia POST JSON com <code>fn</code>, <code>ln</code>, <code>email</code> e{" "}
-            <code>fields.fullname</code>. O segredo vai na URL. Depois do cadastro, o cookie vale em
-            qualquer live deste site.
+            Exemplo: se o destino já é <code>{origin || "https://seu-site"}/funil</code>, fica{" "}
+            <code>
+              {origin || "https://seu-site"}/funil{loginQuery}
+            </code>
+            . O webhook só avisa o servidor; quem manda a pessoa para a página é o formulário.
           </p>
         </div>
         <label className="grid gap-2 text-sm">
