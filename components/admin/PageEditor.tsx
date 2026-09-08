@@ -549,7 +549,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                 </div>
               </label>
               <p className="mt-3 text-sm text-[#9aa0a6]">
-                Envie POST ou GET com nome e e-mail. Autentique com <code>Authorization: Bearer</code>, <code>X-Webhook-Secret</code> ou <code>?secret=</code>. A resposta traz <code>loginUrl</code> para redirecionar a pessoa já logada.
+                Envie POST ou GET com nome e e-mail. Autentique com <code>Authorization: Bearer</code>, <code>X-Webhook-Secret</code> ou <code>?secret=</code>. A resposta traz <code>loginUrl</code> para redirecionar a pessoa já logada. Se o formulário usar outras tags (<code>{"{{nome}}"}</code>, <code>{"{email}"}</code>), ajuste a URL de obrigado.
               </p>
               <pre className="mt-3 overflow-auto rounded-lg bg-[#0f1115] p-3 text-xs text-[#d1d5db]">{`{
   "name": "Maria Silva",
