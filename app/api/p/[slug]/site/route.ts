@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { buildCustomHtml } from "@/lib/custom-site";
+import { isCustomHtmlReady, pageIsViewable } from "@/lib/pages";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -10,7 +11,7 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     where: { slug },
     include: { agent: true, actions: true },
   });
-  if (!page || page.status !== "published" || page.template !== "custom") {
+  if (!page || !pageIsViewable(page) || !isCustomHtmlReady(page)) {
     return new Response("Não encontrado", { status: 404 });
   }
 

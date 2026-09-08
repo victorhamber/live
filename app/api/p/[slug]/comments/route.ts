@@ -1,17 +1,14 @@
-import { randomUUID } from "crypto";
 import { after, NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
-import { readVisitorSessionId, setVisitorSessionId } from "@/lib/session";
+import { readVisitorIdentity, rememberVisitor } from "@/lib/session";
 import { inferLeadStatus, looksLikeQuestion, moderateByRules, wantsAgentReply } from "@/lib/moderation";
 import { classifyComment, maybeReplyAsAgent } from "@/lib/openai";
 import { getAppSettings } from "@/lib/settings";
+import { pageIsViewable } from "@/lib/pages";
+import { upsertLeadVisitor, validLeadEmail, visitorForPage } from "@/lib/leads";
 
 type Ctx = { params: Promise<{ slug: string }> };
-
-function validEmail(email: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
-}
 
 async function refineInBackground(opts: {
   commentId: string;
@@ -107,7 +104,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     where: { slug },
     include: { settings: true },
   });
-  if (!page || page.status !== "published") return jsonError("Página não encontrada", 404);
+  if (!page || !pageIsViewable(page)) return jsonError("Página não encontrada", 404);
 
   const body = await request.json().catch(() => null);
   const text = String(body?.text || "").trim();
@@ -117,33 +114,18 @@ export async function POST(request: NextRequest, ctx: Ctx) {
 
   if (!text) return jsonError("Mensagem vazia");
 
-  let sessionId = await readVisitorSessionId();
-  let visitor = sessionId
-    ? await db.visitor.findUnique({ where: { sessionId } })
-    : null;
-  if (visitor && visitor.pageId !== page.id) visitor = null;
+  const identity = await readVisitorIdentity();
+  let visitor = identity ? await visitorForPage(page.id, identity) : null;
 
   if (!visitor) {
-    if (!name || !validEmail(email)) {
+    if (!name || !validLeadEmail(email)) {
       return jsonError("Informe nome e e-mail para comentar", 401);
     }
-    visitor = await db.visitor.findFirst({
-      where: { pageId: page.id, email },
-      orderBy: { createdAt: "asc" },
-    });
-    if (visitor) {
-      if (name && name !== visitor.name) {
-        visitor = await db.visitor.update({ where: { id: visitor.id }, data: { name } });
-      }
-      await setVisitorSessionId(visitor.sessionId);
-    } else {
-      sessionId = randomUUID();
-      visitor = await db.visitor.create({
-        data: { pageId: page.id, name, email, sessionId },
-      });
-      await setVisitorSessionId(sessionId);
-    }
+    visitor = await upsertLeadVisitor(page.id, name, email, false);
+  } else if (name && name !== visitor.name) {
+    visitor = await db.visitor.update({ where: { id: visitor.id }, data: { name } });
   }
+  await rememberVisitor(visitor);
 
   const recent = await db.comment.findMany({
     where: { visitorId: visitor.id },

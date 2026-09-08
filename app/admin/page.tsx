@@ -1,6 +1,7 @@
 import Link from "next/link";
 import { db } from "@/lib/db";
 import { getPageTemplate } from "@/lib/templates";
+import { pageIsViewable } from "@/lib/pages";
 
 export default async function AdminHome() {
   const pages = await db.page.findMany({
@@ -51,7 +52,7 @@ export default async function AdminHome() {
                   </td>
                   <td className="px-4 py-3 text-[#9aa0a6]">{getPageTemplate(p.template).name}</td>
                   <td className="px-4 py-3 text-[#9aa0a6]">
-                    {p.status === "published" ? (
+                    {pageIsViewable(p) ? (
                       <a className="underline" href={`/${p.slug}`} target="_blank" rel="noreferrer">
                         /{p.slug}
                       </a>

@@ -144,9 +144,7 @@ function rewriteAssetUrls(html: string, slug: string) {
 }
 
 function playerHtml(page: CustomPageInput) {
-  if (!page.vturbPlayerId) {
-    return `<div style="display:grid;place-items:center;height:100%;color:#aaa">Player não configurado</div>`;
-  }
+  if (!page.vturbPlayerId) return "";
   const script = page.vturbScriptUrl
     ? `<script src="${page.vturbScriptUrl}" async></script>`
     : "";
@@ -222,7 +220,7 @@ function injectRuntime(html: string, page: CustomPageInput) {
     template: "custom",
     viewsLabel: tpl.viewsLabel,
   };
-  const snippet = `\n<script>window.__LIVE__=${JSON.stringify(config)};</script>\n<script src="/live.js?v=12" defer></script>\n`;
+  const snippet = `\n<script>window.__LIVE__=${JSON.stringify(config)};</script>\n<script src="/live.js?v=13" defer></script>\n`;
   if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${snippet}</body>`);
   return html + snippet;
 }

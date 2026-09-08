@@ -64,10 +64,10 @@ export async function POST(request: NextRequest, ctx: Ctx) {
         customHtml = fs.readFileSync(path.join(customSiteRoot(id), indexName), "utf8");
         await db.page.update({
           where: { id },
-          data: { customHtml, template: "custom" },
+          data: { customHtml, template: "custom", status: "published" },
         });
       } else {
-        await db.page.update({ where: { id }, data: { template: "custom" } });
+        await db.page.update({ where: { id }, data: { template: "custom", status: "published" } });
       }
       return Response.json({ ok: true, files, customHtml, index: indexName });
     }
@@ -80,7 +80,7 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     writeCustomFile(id, file.name.replace(/\\/g, "/").split("/").pop() || "index.html", buffer);
     await db.page.update({
       where: { id },
-      data: { customHtml, template: "custom" },
+      data: { customHtml, template: "custom", status: "published" },
     });
     return Response.json({ ok: true, files: listCustomFiles(id), customHtml });
   } catch (error) {

@@ -1,6 +1,7 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
+import { pageIsViewable } from "@/lib/pages";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -8,7 +9,7 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const { slug } = await ctx.params;
   const t = Math.max(0, Number(request.nextUrl.searchParams.get("t") || 0));
   const page = await db.page.findUnique({ where: { slug } });
-  if (!page || page.status !== "published") return jsonError("Página não encontrada", 404);
+  if (!page || !pageIsViewable(page)) return jsonError("Página não encontrada", 404);
   if (page.mode !== "simulation") return Response.json({ events: [] });
 
   const events = await db.commentEvent.findMany({

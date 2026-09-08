@@ -1,5 +1,6 @@
 import { db } from "./db";
 import type { AppSettings } from "@prisma/client";
+import { newWebhookSecret } from "./leads";
 
 const ID = "default";
 
@@ -19,6 +20,17 @@ export async function getAppSettings() {
 
 export function invalidateAppSettings() {
   cached = null;
+}
+
+export async function ensureAppLeadWebhookSecret(current?: string | null) {
+  if (current) return current;
+  const secret = newWebhookSecret();
+  const settings = await db.appSettings.update({
+    where: { id: ID },
+    data: { leadWebhookSecret: secret },
+  });
+  cached = { value: settings, at: Date.now() };
+  return secret;
 }
 
 export function maskApiKey(key: string) {

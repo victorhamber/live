@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { initials, linkifyHtml } from "@/lib/utils";
 import { getAppSettings } from "@/lib/settings";
 import { getPageTemplate } from "@/lib/templates";
+import { pageIsViewable } from "@/lib/pages";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export default async function LivePage({ params, searchParams }: Props) {
     where: { slug },
     include: { agent: true, actions: true },
   });
-  if (!page || page.status !== "published") notFound();
+  if (!page || !pageIsViewable(page)) notFound();
 
   if (page.template === "custom") {
     const query = queryFromSearchParams(await searchParams);
@@ -222,7 +223,7 @@ export default async function LivePage({ params, searchParams }: Props) {
           __html: `window.__LIVE__=${JSON.stringify(config)};`,
         }}
       />
-      <script src="/live.js?v=12" defer />
+      <script src="/live.js?v=13" defer />
     </>
   );
 }

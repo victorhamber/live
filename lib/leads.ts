@@ -110,8 +110,13 @@ export async function upsertLeadVisitor(pageId: string, name: string, email: str
   });
 }
 
-export async function signLeadToken(visitor: { sessionId: string; email: string; pageId: string }) {
-  return new SignJWT({ sid: visitor.sessionId, em: visitor.email, pid: visitor.pageId })
+export async function signLeadToken(visitor: { sessionId: string; email: string; name?: string; pageId?: string }) {
+  return new SignJWT({
+    sid: visitor.sessionId,
+    em: visitor.email,
+    nm: visitor.name || "",
+    pid: visitor.pageId || "",
+  })
     .setProtectedHeader({ alg: "HS256" })
     .setExpirationTime("30d")
     .sign(jwtSecret());
@@ -121,7 +126,8 @@ export async function readLeadToken(token: string) {
   const { payload } = await jwtVerify(token, jwtSecret());
   return {
     sessionId: String(payload.sid || payload.sub || ""),
-    email: String(payload.em || ""),
+    email: String(payload.em || "").trim().toLowerCase(),
+    name: String(payload.nm || ""),
     pageId: String(payload.pid || ""),
   };
 }
@@ -145,6 +151,50 @@ export async function ensureLeadWebhookSecret(pageId: string, current?: string |
   return secret;
 }
 
+export async function findVisitorOnPage(
+  pageId: string,
+  identity: { sid?: string | null; email?: string | null }
+) {
+  if (identity.sid) {
+    const bySid = await db.visitor.findUnique({ where: { sessionId: identity.sid } });
+    if (bySid?.pageId === pageId) return bySid;
+  }
+  const email = identity.email?.trim().toLowerCase() || "";
+  if (!validLeadEmail(email)) return null;
+  return db.visitor.findFirst({
+    where: { pageId, email },
+    orderBy: { createdAt: "asc" },
+  });
+}
+
+export async function visitorForPage(
+  pageId: string,
+  identity: { sid?: string | null; email?: string | null; name?: string | null }
+) {
+  const found = await findVisitorOnPage(pageId, identity);
+  if (found) {
+    const name = prettyName(identity.name || "");
+    if (name && name !== found.name) {
+      return db.visitor.update({ where: { id: found.id }, data: { name } });
+    }
+    return found;
+  }
+
+  if (identity.sid) {
+    const bySid = await db.visitor.findUnique({ where: { sessionId: identity.sid } });
+    if (bySid) {
+      return upsertLeadVisitor(pageId, prettyName(identity.name || "") || bySid.name, bySid.email, false);
+    }
+  }
+
+  const email = identity.email?.trim().toLowerCase() || "";
+  const name = prettyName(identity.name || "");
+  if (validLeadEmail(email)) {
+    return upsertLeadVisitor(pageId, name || email.split("@")[0], email, false);
+  }
+  return null;
+}
+
 export async function claimPageVisitor(
   pageId: string,
   token: string,
@@ -152,22 +202,14 @@ export async function claimPageVisitor(
 ) {
   if (token) {
     const claim = await readLeadToken(token);
-    if (claim.pageId && claim.pageId !== pageId) {
-      throw new Error("other-page");
-    }
-    let visitor = claim.sessionId
-      ? await db.visitor.findFirst({ where: { pageId, sessionId: claim.sessionId } })
-      : null;
-    if (!visitor && claim.email) {
-      visitor = await db.visitor.findFirst({
-        where: { pageId, email: claim.email },
-        orderBy: { createdAt: "asc" },
-      });
-    }
-    return visitor;
+    return visitorForPage(pageId, {
+      sid: claim.sessionId,
+      email: claim.email || parsed.email,
+      name: claim.name || parsed.name,
+    });
   }
-  if (validLeadEmail(parsed.email) && parsed.name) {
-    return upsertLeadVisitor(pageId, parsed.name, parsed.email, false);
+  if (validLeadEmail(parsed.email)) {
+    return upsertLeadVisitor(pageId, parsed.name || parsed.email.split("@")[0], parsed.email, false);
   }
   return null;
 }

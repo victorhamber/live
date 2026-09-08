@@ -1,6 +1,6 @@
 "use client";
 
-import { FormEvent, useEffect, useState } from "react";
+import { FormEvent, useEffect, useMemo, useState } from "react";
 
 export default function SettingsPage() {
   const [openaiApiKey, setOpenaiApiKey] = useState("");
@@ -8,6 +8,8 @@ export default function SettingsPage() {
   const [hasKey, setHasKey] = useState(false);
   const [logoUrl, setLogoUrl] = useState("");
   const [logoFile, setLogoFile] = useState<File | null>(null);
+  const [leadWebhookSecret, setLeadWebhookSecret] = useState("");
+  const [origin, setOrigin] = useState("");
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState("");
 
@@ -18,11 +20,41 @@ export default function SettingsPage() {
     setOpenaiModel(data.openaiModel || "gpt-4o-mini");
     setHasKey(Boolean(data.hasKey));
     setLogoUrl(data.logoUrl || "");
+    setLeadWebhookSecret(data.leadWebhookSecret || "");
   }
 
   useEffect(() => {
+    setOrigin(window.location.origin);
     load().catch(() => setMessage("Não foi possível carregar as configurações"));
   }, []);
+
+  const webhookUrl = useMemo(
+    () =>
+      origin
+        ? `${origin}/api/lead?secret=${encodeURIComponent(leadWebhookSecret)}`
+        : `/api/lead?secret=${leadWebhookSecret}`,
+    [origin, leadWebhookSecret]
+  );
+  const thankYouUrl = origin
+    ? `${origin}/sua-pagina?email={{email}}&name={{name}}`
+    : `/sua-pagina?email={{email}}&name={{name}}`;
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage("Copiado");
+    } catch {
+      setMessage("Não foi possível copiar");
+    }
+  }
+
+  function rotateSecret() {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const secret = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    setLeadWebhookSecret(secret);
+    setMessage("Novo segredo gerado. Salve para aplicar.");
+  }
 
   async function onSubmit(e: FormEvent) {
     e.preventDefault();
@@ -31,7 +63,7 @@ export default function SettingsPage() {
     const res = await fetch("/api/admin/settings", {
       method: "PUT",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ openaiApiKey, openaiModel }),
+      body: JSON.stringify({ openaiApiKey, openaiModel, leadWebhookSecret }),
     });
     const data = await res.json();
     if (!res.ok) {
@@ -42,6 +74,7 @@ export default function SettingsPage() {
     setOpenaiApiKey(data.openaiApiKey || "");
     setOpenaiModel(data.openaiModel || "gpt-4o-mini");
     setHasKey(Boolean(data.hasKey));
+    if (data.leadWebhookSecret) setLeadWebhookSecret(data.leadWebhookSecret);
 
     if (logoFile) {
       const form = new FormData();
@@ -62,12 +95,82 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="max-w-lg">
+    <div className="max-w-2xl">
       <h1 className="text-2xl font-semibold">Configurações</h1>
       <p className="mt-1 text-sm text-[#9aa0a6]">
-        Logo do site, ícone da aba do navegador e chave da OpenAI.
+        Webhook de captura para o site todo, logo e chave da OpenAI.
       </p>
       <form onSubmit={onSubmit} className="mt-6 grid gap-4">
+        <div className="rounded-xl border border-[#2a2f3a] p-4">
+          <p className="font-medium">Webhook de captura (site todo)</p>
+          <p className="mt-1 text-sm text-[#9aa0a6]">
+            Uma URL só, vale para todas as páginas. Quem se cadastra no funil fica salvo no cookie e
+            não precisa se cadastrar de novo em outro vídeo.
+          </p>
+          <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-[#9aa0a6]">
+            <li>
+              Na Trajettu, abra o formulário e cole a URL do webhook em{" "}
+              <strong className="text-[#e5e7eb]">Webhooks (Opcional)</strong>.
+            </li>
+            <li>
+              Na ação pós-cadastro, escolha <strong className="text-[#e5e7eb]">Redirecionar</strong>{" "}
+              para a página do funil com e-mail e nome na URL.
+            </li>
+            <li>Troque <code>sua-pagina</code> pelo slug da primeira página que a pessoa vê.</li>
+          </ol>
+          <label className="mt-3 grid gap-1 text-sm">
+            URL do webhook
+            <div className="flex gap-2">
+              <input
+                className="w-full rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 font-mono text-xs"
+                readOnly
+                value={webhookUrl}
+              />
+              <button
+                type="button"
+                className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm"
+                onClick={() => copyText(webhookUrl)}
+              >
+                Copiar
+              </button>
+            </div>
+          </label>
+          <label className="mt-3 grid gap-1 text-sm">
+            Segredo
+            <div className="flex gap-2">
+              <input
+                className="w-full rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 font-mono text-xs"
+                value={leadWebhookSecret}
+                onChange={(e) => setLeadWebhookSecret(e.target.value)}
+              />
+              <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={rotateSecret}>
+                Gerar
+              </button>
+            </div>
+          </label>
+          <label className="mt-3 grid gap-1 text-sm">
+            URL de redirecionamento na Trajettu
+            <div className="flex gap-2">
+              <input
+                className="w-full rounded-lg border border-[#2a2f3a] bg-[#0f1115] px-3 py-2 font-mono text-xs"
+                readOnly
+                value={thankYouUrl}
+              />
+              <button
+                type="button"
+                className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm"
+                onClick={() => copyText(thankYouUrl)}
+              >
+                Copiar
+              </button>
+            </div>
+          </label>
+          <p className="mt-3 text-sm text-[#9aa0a6]">
+            A Trajettu envia POST JSON com <code>fn</code>, <code>ln</code>, <code>email</code> e{" "}
+            <code>fields.fullname</code>. O segredo vai na URL. Depois do cadastro, o cookie vale em
+            qualquer live deste site.
+          </p>
+        </div>
         <label className="grid gap-2 text-sm">
           Logo do site
           <div className="flex items-center gap-3">

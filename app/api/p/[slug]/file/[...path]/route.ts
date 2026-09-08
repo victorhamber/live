@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import fs from "fs";
 import { db } from "@/lib/db";
 import { mimeFor, safeCustomFile } from "@/lib/custom-site";
+import { isCustomHtmlReady, pageIsViewable } from "@/lib/pages";
 
 type Ctx = { params: Promise<{ slug: string; path: string[] }> };
 
@@ -9,9 +10,9 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const { slug, path: parts } = await ctx.params;
   const page = await db.page.findUnique({
     where: { slug },
-    select: { id: true, status: true, template: true },
+    select: { id: true, status: true, template: true, customHtml: true },
   });
-  if (!page || page.status !== "published" || page.template !== "custom") {
+  if (!page || !pageIsViewable(page) || !isCustomHtmlReady(page)) {
     return new Response("Não encontrado", { status: 404 });
   }
 

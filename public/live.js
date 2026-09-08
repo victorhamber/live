@@ -351,13 +351,13 @@
       q.get("fullname") ||
       [q.get("first_name") || q.get("fn"), q.get("last_name") || q.get("ln")].filter(Boolean).join(" ")
     ).trim();
-    if (!token && !(email && name)) return;
+    if (!token && !email) return;
     try {
       const res = await fetch("/api/p/" + encodeURIComponent(cfg.slug) + "/session", {
         method: "POST",
         credentials: "same-origin",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(token ? { token: token } : { email: email, name: name }),
+        body: JSON.stringify(token ? { token: token } : { email: email, name: name || email }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok && data.visitor) applyVisitor(data.visitor);

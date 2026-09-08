@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { formatDuration, getPageStats, parseStatRange, STAT_RANGES } from "@/lib/page-stats";
 import { getPageTemplate } from "@/lib/templates";
+import { pageIsViewable } from "@/lib/pages";
 
 export const dynamic = "force-dynamic";
 
@@ -36,9 +37,9 @@ export default async function PageStats({ params, searchParams }: Props) {
               Editar página
             </Link>
             {" · "}
-            {page.status === "published" ? (
+            {pageIsViewable(page) ? (
               <a href={`/${page.slug}`} target="_blank" rel="noreferrer" className="hover:text-[#3ea6ff]">
-                Abrir sala
+                {page.template === "custom" ? "Abrir página" : "Abrir sala"}
               </a>
             ) : (
               "Rascunho"

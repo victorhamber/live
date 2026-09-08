@@ -1,7 +1,10 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
-import { readVisitorSessionId } from "@/lib/session";
+import { readVisitorIdentity } from "@/lib/session";
+import { findVisitorOnPage } from "@/lib/leads";
+import { getAdmin } from "@/lib/auth";
+import { pageIsViewable } from "@/lib/pages";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -13,10 +16,25 @@ function clip(value: unknown, max: number) {
   return String(value || "").trim().slice(0, max);
 }
 
+async function isAdminViewer() {
+  try {
+    return Boolean(await getAdmin());
+  } catch {
+    return false;
+  }
+}
+
 export async function POST(request: NextRequest, ctx: Ctx) {
+  if (await isAdminViewer()) {
+    return Response.json({ ok: true, skipped: true });
+  }
+
   const { slug } = await ctx.params;
-  const page = await db.page.findUnique({ where: { slug }, select: { id: true, status: true } });
-  if (!page || page.status !== "published") return jsonError("Página não encontrada", 404);
+  const page = await db.page.findUnique({
+    where: { slug },
+    select: { id: true, status: true, template: true, customHtml: true },
+  });
+  if (!page || !pageIsViewable(page)) return jsonError("Página não encontrada", 404);
 
   const body = await request.json().catch(() => null);
   const type = clip(body?.type, 20);
@@ -32,10 +50,10 @@ export async function POST(request: NextRequest, ctx: Ctx) {
   const url = clip(body?.url, 500);
 
   let visitorId: string | undefined;
-  const sessionId = await readVisitorSessionId();
-  if (sessionId) {
-    const visitor = await db.visitor.findUnique({ where: { sessionId }, select: { id: true, pageId: true } });
-    if (visitor && visitor.pageId === page.id) visitorId = visitor.id;
+  const identity = await readVisitorIdentity();
+  if (identity) {
+    const visitor = await findVisitorOnPage(page.id, identity);
+    if (visitor) visitorId = visitor.id;
   }
 
   let visit =

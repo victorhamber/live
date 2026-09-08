@@ -9,6 +9,7 @@ import {
   validLeadEmail,
   webhookSecretFrom,
 } from "@/lib/leads";
+import { getAppSettings } from "@/lib/settings";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
@@ -32,12 +33,14 @@ async function ingest(request: NextRequest, slug: string, raw: unknown) {
     select: { id: true, slug: true, leadWebhookSecret: true },
   });
   if (!page) return json({ error: "Página não encontrada" }, 404);
-  if (!page.leadWebhookSecret) {
-    return json({ error: "Webhook ainda não configurado nesta live" }, 400);
-  }
 
+  const settings = await getAppSettings();
   const given = webhookSecretFrom(request, raw && typeof raw === "object" ? (raw as Record<string, unknown>) : null);
-  if (!secretsMatch(given, page.leadWebhookSecret)) {
+  const allowed = [page.leadWebhookSecret, settings.leadWebhookSecret].filter(Boolean);
+  if (!allowed.length) {
+    return json({ error: "Webhook ainda não configurado" }, 400);
+  }
+  if (!allowed.some((secret) => secretsMatch(given, secret))) {
     return json({ error: "Segredo inválido" }, 401);
   }
 

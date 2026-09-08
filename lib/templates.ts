@@ -52,7 +52,7 @@ export const PAGE_TEMPLATES = [
   {
     id: "custom",
     name: "Personalizado",
-    description: "Envie um HTML ou o ZIP do site inteiro. A sala usa o seu layout, não os modelos prontos.",
+    description: "Cole o HTML pronto. A página sobe como está, sem precisar de vídeo, transcrição ou chat.",
     badge: "Ao vivo",
     chatTitle: "Chat",
     stageLabel: "",

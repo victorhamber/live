@@ -138,9 +138,8 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
   }, [initial.id]);
 
   const payload = useMemo(() => form, [form]);
-  const webhookUrl = origin
-    ? `${origin}/api/p/${form.slug}/lead?secret=${encodeURIComponent(form.leadWebhookSecret)}`
-    : `/api/p/${form.slug}/lead?secret=`;
+  const canPreview = form.status === "published" || (form.template === "custom" && Boolean(form.customHtml.trim()));
+  const previewLabel = form.template === "custom" ? "Ver página" : "Ver live";
   const thankYouUrl = origin
     ? `${origin}/${form.slug}?email={{email}}&name={{name}}`
     : `/${form.slug}?email={{email}}&name={{name}}`;
@@ -162,6 +161,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     }
     setMessage("Salvo");
     if (data.page?.leadWebhookSecret) set("leadWebhookSecret", data.page.leadWebhookSecret);
+    if (data.page?.status) set("status", data.page.status);
     router.refresh();
   }
 
@@ -243,8 +243,12 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
       setMessage(data.error || "Falha ao enviar o site");
       return;
     }
-    set("template", "custom");
-    if (typeof data.customHtml === "string") set("customHtml", data.customHtml);
+    setForm((f) => ({
+      ...f,
+      template: "custom",
+      status: "published",
+      customHtml: typeof data.customHtml === "string" ? data.customHtml : f.customHtml,
+    }));
     setFiles(data.files || []);
     setMessage(data.files?.length ? `Site importado · ${data.files.length} arquivos` : "HTML importado");
   }
@@ -272,14 +276,6 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     }
   }
 
-  function rotateSecret() {
-    const bytes = new Uint8Array(24);
-    crypto.getRandomValues(bytes);
-    const secret = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
-    set("leadWebhookSecret", secret);
-    setMessage("Novo segredo gerado. Salve a página para aplicar.");
-  }
-
   return (
     <form onSubmit={save} className="max-w-4xl">
       <div className="flex flex-wrap items-center justify-between gap-3">
@@ -291,9 +287,9 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
           <a className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm" href={`/admin/pages/${initial.id}/stats`}>
             Estatísticas
           </a>
-          {form.status === "published" ? (
+          {canPreview ? (
             <a className="rounded-lg border border-[#2a2f3a] px-3 py-2 text-sm" href={`/${form.slug}`} target="_blank">
-              Ver live
+              {previewLabel}
             </a>
           ) : null}
           <button type="button" onClick={removePage} className="rounded-lg border border-[#f87171]/40 px-3 py-2 text-sm text-[#f87171]">
@@ -333,8 +329,11 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                       type="button"
                       key={tpl.id}
                       onClick={() => {
-                        set("template", tpl.id);
-                        if (tpl.id === "custom" && !form.customHtml) set("customHtml", CUSTOM_STARTER_HTML);
+                        setForm((f) => ({
+                          ...f,
+                          template: tpl.id,
+                          customHtml: tpl.id === "custom" && !f.customHtml ? CUSTOM_STARTER_HTML : f.customHtml,
+                        }));
                       }}
                       className={`rounded-xl border p-3 text-left ${active ? "border-[#3ea6ff] bg-[#3ea6ff]/10" : "border-[#2a2f3a] bg-[#0f1115]"}`}
                     >
@@ -349,10 +348,10 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
               <div className="rounded-xl border border-[#2a2f3a] bg-[#0f1115] p-4">
                 <p className="text-sm font-medium">Site personalizado</p>
                 <p className="mt-1 text-sm text-[#9aa0a6]">
-                  Envie um arquivo <strong>.html</strong> ou um <strong>.zip</strong> com o site inteiro (HTML, CSS, JS e imagens).
-                  Use <code className="text-[#3ea6ff]">{"{{player}}"}</code>, <code className="text-[#3ea6ff]">{"{{cta}}"}</code>,{" "}
-                  <code className="text-[#3ea6ff]">{"{{chat}}"}</code>, <code className="text-[#3ea6ff]">{"{{title}}"}</code> e{" "}
-                  <code className="text-[#3ea6ff]">{"{{description}}"}</code> se quiser encaixar o player, o botão ou o chat da live.
+                  Cole o HTML pronto ou envie um <strong>.html</strong> / <strong>.zip</strong>. A página sobe do jeito que está:
+                  não precisa de transcrição, player VTurb, chat nem comentários da IA.
+                  Use <code className="text-[#3ea6ff]">{"{{player}}"}</code>, <code className="text-[#3ea6ff]">{"{{cta}}"}</code> ou{" "}
+                  <code className="text-[#3ea6ff]">{"{{chat}}"}</code> só se quiser encaixar essas peças no HTML.
                 </p>
                 <label className="mt-3 block text-sm">
                   HTML ou ZIP
@@ -517,34 +516,14 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <div className="rounded-xl border border-[#2a2f3a] p-4">
               <p className="font-medium">Login automático pela Trajettu</p>
               <p className="mt-1 text-sm text-[#9aa0a6]">
-                O formulário de captura da Trajettu continua mandando o lead pra Meta CAPI. Acrescente esta live como webhook extra e redirecione a pessoa pra sala já identificada.
+                O webhook de captura agora vale para o site todo. Configure a URL em{" "}
+                <a className="text-[#3ea6ff] underline" href="/admin/settings">
+                  Configurações
+                </a>
+                . Quem já se cadastrou em qualquer página fica identificado nas outras.
               </p>
-              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-[#9aa0a6]">
-                <li>No painel Trajettu, abra o site → <strong className="text-[#e5e7eb]">Formulários</strong> → o formulário do anúncio.</li>
-                <li>Em <strong className="text-[#e5e7eb]">Webhooks (Opcional)</strong>, cole a URL abaixo (já vai com o segredo).</li>
-                <li>Em ação pós-cadastro, escolha <strong className="text-[#e5e7eb]">Redirecionar</strong> e cole a URL de obrigado.</li>
-                <li>Salve o formulário e copie de novo o HTML com integração.</li>
-              </ol>
               <label className="mt-3 grid gap-1 text-sm">
-                URL do webhook (cole na Trajettu)
-                <div className="flex gap-2">
-                  <input className={fieldClass()} readOnly value={webhookUrl} />
-                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(webhookUrl)}>
-                    Copiar
-                  </button>
-                </div>
-              </label>
-              <label className="mt-3 grid gap-1 text-sm">
-                Segredo
-                <div className="flex gap-2">
-                  <input className={fieldClass()} value={form.leadWebhookSecret} onChange={(e) => set("leadWebhookSecret", e.target.value)} />
-                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={rotateSecret}>
-                    Gerar
-                  </button>
-                </div>
-              </label>
-              <label className="mt-3 grid gap-1 text-sm">
-                URL de redirecionamento na Trajettu
+                URL de redirecionamento desta página
                 <div className="flex gap-2">
                   <input className={fieldClass()} readOnly value={thankYouUrl} />
                   <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(thankYouUrl)}>
@@ -553,14 +532,8 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                 </div>
               </label>
               <p className="mt-3 text-sm text-[#9aa0a6]">
-                A Trajettu envia POST JSON com <code>fn</code>, <code>ln</code>, <code>email</code> e <code>fields.fullname</code>. Não precisa de header de autorização: o segredo vai na própria URL. O Meta continua sendo disparado pela Trajettu.
+                Use esta URL na ação pós-cadastro da Trajettu se esta for a primeira página do funil. Depois o cookie vale nas outras lives.
               </p>
-              <pre className="mt-3 overflow-auto rounded-lg bg-[#0f1115] p-3 text-xs text-[#d1d5db]">{`{
-  "fn": "maria",
-  "ln": "silva",
-  "email": "maria@email.com",
-  "fields": { "fullname": "Maria Silva", "email": "maria@email.com" }
-}`}</pre>
             </div>
           </>
         )}

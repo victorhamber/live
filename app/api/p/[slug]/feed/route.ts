@@ -1,25 +1,27 @@
 import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { jsonError } from "@/lib/utils";
-import { readVisitorSessionId } from "@/lib/session";
+import { readVisitorIdentity } from "@/lib/session";
+import { findVisitorOnPage } from "@/lib/leads";
+import { pageIsViewable } from "@/lib/pages";
 
 type Ctx = { params: Promise<{ slug: string }> };
 
-type CachedPage = { id: string; status: string; mode: string; at: number };
+type CachedPage = { id: string; status: string; mode: string; template: string; customHtml: string; at: number };
 const pageCache = new Map<string, CachedPage>();
 const PAGE_TTL_MS = 20_000;
 
-async function getPublishedPage(slug: string) {
+async function getViewablePage(slug: string) {
   const hit = pageCache.get(slug);
-  if (hit && Date.now() - hit.at < PAGE_TTL_MS) return hit;
+  if (hit && Date.now() - hit.at < PAGE_TTL_MS) return pageIsViewable(hit) ? hit : null;
   const page = await db.page.findUnique({
     where: { slug },
-    select: { id: true, status: true, mode: true },
+    select: { id: true, status: true, mode: true, template: true, customHtml: true },
   });
   if (!page) return null;
   const cached = { ...page, at: Date.now() };
   pageCache.set(slug, cached);
-  return cached;
+  return pageIsViewable(cached) ? cached : null;
 }
 
 export async function GET(request: NextRequest, ctx: Ctx) {
@@ -29,12 +31,11 @@ export async function GET(request: NextRequest, ctx: Ctx) {
   const fromT = fromRaw != null && fromRaw !== "" ? Number(fromRaw) : NaN;
   const incremental = Number.isFinite(fromT) && fromT >= 0;
 
-  const page = await getPublishedPage(slug);
-  if (!page || page.status !== "published") return jsonError("Página não encontrada", 404);
+  const page = await getViewablePage(slug);
+  if (!page) return jsonError("Página não encontrada", 404);
 
-  const sessionId = await readVisitorSessionId();
-  const visitor = sessionId ? await db.visitor.findUnique({ where: { sessionId } }) : null;
-  const visitorOnPage = visitor && visitor.pageId === page.id ? visitor : null;
+  const identity = await readVisitorIdentity();
+  const visitorOnPage = identity ? await findVisitorOnPage(page.id, identity) : null;
 
   const timeFilter = incremental
     ? { gt: fromT, lte: t }

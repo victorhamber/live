@@ -5,6 +5,7 @@ import { jsonError, parseTranscript, slugify } from "@/lib/utils";
 import { dropOrphanAgentReplies } from "@/lib/scripted-replies";
 import { isPageTemplate } from "@/lib/templates";
 import { ensureLeadWebhookSecret } from "@/lib/leads";
+import { nextPageStatus } from "@/lib/pages";
 
 async function guard() {
   try {
@@ -55,12 +56,21 @@ export async function PUT(request: NextRequest, ctx: Ctx) {
     }
   }
 
+  const template = isPageTemplate(body.template) ? body.template : current.template;
+  const customHtml = body.customHtml != null ? String(body.customHtml) : current.customHtml;
+  const status = nextPageStatus({
+    template,
+    customHtml,
+    requested: body.status != null ? String(body.status) : current.status,
+    current: current.status,
+  });
+
   const page = await db.page.update({
     where: { id },
     data: {
       title: body.title ?? current.title,
       slug,
-      status: body.status ?? current.status,
+      status,
       mode: body.mode ?? current.mode,
       videoTitle: body.videoTitle ?? current.videoTitle,
       channelName: body.channelName ?? current.channelName,
@@ -75,10 +85,10 @@ export async function PUT(request: NextRequest, ctx: Ctx) {
       viewersBase: Number(body.viewersBase ?? current.viewersBase),
       chatNote: body.chatNote ?? current.chatNote,
       aiInstructions: body.aiInstructions ?? current.aiInstructions,
-      template: isPageTemplate(body.template) ? body.template : current.template,
+      template,
       ctaLabel: body.ctaLabel != null ? String(body.ctaLabel) : current.ctaLabel,
       ctaUrl: body.ctaUrl != null ? String(body.ctaUrl) : current.ctaUrl,
-      customHtml: body.customHtml != null ? String(body.customHtml) : current.customHtml,
+      customHtml,
       leadWebhookSecret:
         typeof body.leadWebhookSecret === "string" && body.leadWebhookSecret.trim()
           ? body.leadWebhookSecret.trim()
