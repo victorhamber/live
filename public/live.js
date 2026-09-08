@@ -219,15 +219,7 @@
       const res = await fetch(url);
       if (!res.ok) return;
       const data = await res.json();
-      if (data.visitor) {
-        const first = !visitor;
-        visitor = data.visitor;
-        $("user-avatar").textContent = initials(visitor.name);
-        if (first && !identifiedSent) {
-          identifiedSent = true;
-          track("identify");
-        }
-      }
+      if (data.visitor) applyVisitor(data.visitor);
       const merged = []
         .concat(data.events || [], data.comments || [])
         .sort((a, b) => a.timestampSec - b.timestampSec);
@@ -330,6 +322,54 @@
     $("send-btn").classList.toggle("active", inp.value.trim().length > 0);
   }
 
+  function applyVisitor(next) {
+    if (!next || !next.name) return;
+    visitor = next;
+    if ($("user-avatar")) $("user-avatar").textContent = initials(visitor.name);
+    if (!identifiedSent) {
+      identifiedSent = true;
+      track("identify");
+    }
+  }
+
+  function cleanClaimParams() {
+    try {
+      const u = new URL(location.href);
+      ["s", "lead", "email", "name", "nome", "first_name", "last_name"].forEach((k) => u.searchParams.delete(k));
+      history.replaceState({}, "", u.pathname + u.search + u.hash);
+    } catch (e) {}
+  }
+
+  async function claimFromUrl() {
+    const q = new URLSearchParams(location.search);
+    const token = (q.get("s") || q.get("lead") || "").trim();
+    const email = (q.get("email") || "").trim();
+    const name = (q.get("name") || q.get("nome") || [q.get("first_name"), q.get("last_name")].filter(Boolean).join(" ")).trim();
+    if (!token && !(email && name)) return;
+    try {
+      const res = await fetch("/api/p/" + encodeURIComponent(cfg.slug) + "/session", {
+        method: "POST",
+        credentials: "same-origin",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(token ? { token: token } : { email: email, name: name }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok && data.visitor) applyVisitor(data.visitor);
+    } catch (e) {}
+    cleanClaimParams();
+  }
+
+  async function restoreSession() {
+    if (visitor) return;
+    try {
+      const res = await fetch("/api/p/" + encodeURIComponent(cfg.slug) + "/session", {
+        credentials: "same-origin",
+      });
+      const data = await res.json().catch(() => ({}));
+      if (data.visitor) applyVisitor(data.visitor);
+    } catch (e) {}
+  }
+
   function fluctuateViewers() {
     const viewsLabel = cfg.viewsLabel || "visualizações ao vivo";
     setInterval(() => {
@@ -341,7 +381,9 @@
     }, 3800);
   }
 
-  function init() {
+  async function init() {
+    await claimFromUrl();
+    await restoreSession();
     track("pageview");
     bindTracking();
     if ($("desc-box")) {
@@ -362,13 +404,8 @@
       const name = $("identity-name").value.trim();
       const email = $("identity-email").value.trim();
       if (!name || !email) return showToast("Preencha nome e e-mail");
-      visitor = { name, email };
-      $("user-avatar").textContent = initials(name);
+      applyVisitor({ name, email });
       closeIdentity();
-      if (!identifiedSent) {
-        identifiedSent = true;
-        track("identify");
-      }
       const text = pendingText;
       pendingText = "";
       clearInput();

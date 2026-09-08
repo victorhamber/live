@@ -35,6 +35,7 @@ type PagePayload = {
   ctaLabel: string;
   ctaUrl: string;
   customHtml: string;
+  leadWebhookSecret: string;
   language: string;
   viewersBase: number;
   chatNote: string;
@@ -90,6 +91,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     ctaLabel: initial.ctaLabel || "",
     ctaUrl: initial.ctaUrl || "",
     customHtml: initial.customHtml || "",
+    leadWebhookSecret: initial.leadWebhookSecret || "",
     language: initial.language,
     viewersBase: initial.viewersBase,
     chatNote: initial.chatNote,
@@ -122,6 +124,11 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
   const [events, setEvents] = useState(initial.commentEvents);
   const [files, setFiles] = useState<string[]>([]);
   const [uploading, setUploading] = useState(false);
+  const [origin, setOrigin] = useState("");
+
+  useEffect(() => {
+    setOrigin(window.location.origin);
+  }, []);
 
   useEffect(() => {
     fetch(`/api/admin/pages/${initial.id}/custom`)
@@ -148,6 +155,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
       return;
     }
     setMessage("Salvo");
+    if (data.page?.leadWebhookSecret) set("leadWebhookSecret", data.page.leadWebhookSecret);
     router.refresh();
   }
 
@@ -247,6 +255,23 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
     }
     setFiles([]);
     setMessage("Arquivos removidos");
+  }
+
+  async function copyText(text: string) {
+    try {
+      await navigator.clipboard.writeText(text);
+      setMessage("Copiado");
+    } catch {
+      setMessage("Não foi possível copiar");
+    }
+  }
+
+  function rotateSecret() {
+    const bytes = new Uint8Array(24);
+    crypto.getRandomValues(bytes);
+    const secret = Array.from(bytes, (b) => b.toString(16).padStart(2, "0")).join("");
+    set("leadWebhookSecret", secret);
+    setMessage("Novo segredo gerado. Salve a página para aplicar.");
   }
 
   return (
@@ -483,6 +508,54 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <label className="grid gap-1 text-sm">Idioma<input className={fieldClass()} value={form.language} onChange={(e) => set("language", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Viewers base<input type="number" className={fieldClass()} value={form.viewersBase} onChange={(e) => set("viewersBase", Number(e.target.value))} /></label>
             <label className="grid gap-1 text-sm">Nota do chat<input className={fieldClass()} value={form.chatNote} onChange={(e) => set("chatNote", e.target.value)} /></label>
+            <div className="rounded-xl border border-[#2a2f3a] p-4">
+              <p className="font-medium">Login automático por captura</p>
+              <p className="mt-1 text-sm text-[#9aa0a6]">
+                O formulário do anúncio continua enviando os dados para o Meta. Configure um webhook extra para esta live: quando a pessoa se cadastrar, ela já entra logada e não precisa informar nome e e-mail de novo para comentar.
+              </p>
+              <label className="mt-3 grid gap-1 text-sm">
+                URL do webhook
+                <div className="flex gap-2">
+                  <input className={fieldClass()} readOnly value={origin ? `${origin}/api/p/${form.slug}/lead` : `/api/p/${form.slug}/lead`} />
+                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(`${origin}/api/p/${form.slug}/lead`)}>
+                    Copiar
+                  </button>
+                </div>
+              </label>
+              <label className="mt-3 grid gap-1 text-sm">
+                Segredo
+                <div className="flex gap-2">
+                  <input className={fieldClass()} value={form.leadWebhookSecret} onChange={(e) => set("leadWebhookSecret", e.target.value)} />
+                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={rotateSecret}>
+                    Gerar
+                  </button>
+                </div>
+              </label>
+              <label className="mt-3 grid gap-1 text-sm">
+                URL de obrigado / redirect da live
+                <div className="flex gap-2">
+                  <input
+                    className={fieldClass()}
+                    readOnly
+                    value={origin ? `${origin}/${form.slug}?email={{email}}&name={{name}}` : `/${form.slug}?email={{email}}&name={{name}}`}
+                  />
+                  <button
+                    type="button"
+                    className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm"
+                    onClick={() => copyText(`${origin}/${form.slug}?email={{email}}&name={{name}}`)}
+                  >
+                    Copiar
+                  </button>
+                </div>
+              </label>
+              <p className="mt-3 text-sm text-[#9aa0a6]">
+                Envie POST ou GET com nome e e-mail. Autentique com <code>Authorization: Bearer</code>, <code>X-Webhook-Secret</code> ou <code>?secret=</code>. A resposta traz <code>loginUrl</code> para redirecionar a pessoa já logada.
+              </p>
+              <pre className="mt-3 overflow-auto rounded-lg bg-[#0f1115] p-3 text-xs text-[#d1d5db]">{`{
+  "name": "Maria Silva",
+  "email": "maria@email.com"
+}`}</pre>
+            </div>
           </>
         )}
 

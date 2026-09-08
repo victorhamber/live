@@ -6,7 +6,10 @@ import { getPageTemplate } from "@/lib/templates";
 
 export const dynamic = "force-dynamic";
 
-type Props = { params: Promise<{ slug: string }> };
+type Props = {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+};
 
 export async function generateMetadata({ params }: Props) {
   const { slug } = await params;
@@ -21,7 +24,17 @@ export async function generateMetadata({ params }: Props) {
   };
 }
 
-export default async function LivePage({ params }: Props) {
+function queryFromSearchParams(sp: Record<string, string | string[] | undefined>) {
+  const qs = new URLSearchParams();
+  for (const [key, value] of Object.entries(sp || {})) {
+    const raw = Array.isArray(value) ? value[0] : value;
+    if (raw) qs.set(key, raw);
+  }
+  const q = qs.toString();
+  return q ? `?${q}` : "";
+}
+
+export default async function LivePage({ params, searchParams }: Props) {
   const { slug } = await params;
   const page = await db.page.findUnique({
     where: { slug },
@@ -30,9 +43,10 @@ export default async function LivePage({ params }: Props) {
   if (!page || page.status !== "published") notFound();
 
   if (page.template === "custom") {
+    const query = queryFromSearchParams(await searchParams);
     return (
       <iframe
-        src={`/api/p/${page.slug}/site`}
+        src={`/api/p/${page.slug}/site${query}`}
         title={page.videoTitle || page.title}
         style={{
           position: "fixed",
@@ -208,7 +222,7 @@ export default async function LivePage({ params }: Props) {
           __html: `window.__LIVE__=${JSON.stringify(config)};`,
         }}
       />
-      <script src="/live.js?v=8" defer />
+      <script src="/live.js?v=10" defer />
     </>
   );
 }

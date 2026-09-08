@@ -127,11 +127,22 @@ export async function POST(request: NextRequest, ctx: Ctx) {
     if (!name || !validEmail(email)) {
       return jsonError("Informe nome e e-mail para comentar", 401);
     }
-    sessionId = randomUUID();
-    visitor = await db.visitor.create({
-      data: { pageId: page.id, name, email, sessionId },
+    visitor = await db.visitor.findFirst({
+      where: { pageId: page.id, email },
+      orderBy: { createdAt: "asc" },
     });
-    await setVisitorSessionId(sessionId);
+    if (visitor) {
+      if (name && name !== visitor.name) {
+        visitor = await db.visitor.update({ where: { id: visitor.id }, data: { name } });
+      }
+      await setVisitorSessionId(visitor.sessionId);
+    } else {
+      sessionId = randomUUID();
+      visitor = await db.visitor.create({
+        data: { pageId: page.id, name, email, sessionId },
+      });
+      await setVisitorSessionId(sessionId);
+    }
   }
 
   const recent = await db.comment.findMany({

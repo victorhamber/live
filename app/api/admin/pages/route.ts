@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { db } from "@/lib/db";
 import { requireAdmin } from "@/lib/auth";
 import { jsonError, slugify } from "@/lib/utils";
+import { newWebhookSecret } from "@/lib/leads";
 
 async function guard() {
   try {
@@ -38,6 +39,7 @@ export async function POST(request: NextRequest) {
     data: {
       title,
       slug,
+      leadWebhookSecret: newWebhookSecret(),
       agent: { create: { name: "Suporte" } },
       knowledgeBase: { create: { content: "" } },
       settings: { create: {} },

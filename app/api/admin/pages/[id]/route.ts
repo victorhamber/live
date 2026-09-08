@@ -4,6 +4,7 @@ import { requireAdmin } from "@/lib/auth";
 import { jsonError, parseTranscript, slugify } from "@/lib/utils";
 import { dropOrphanAgentReplies } from "@/lib/scripted-replies";
 import { isPageTemplate } from "@/lib/templates";
+import { ensureLeadWebhookSecret } from "@/lib/leads";
 
 async function guard() {
   try {
@@ -32,7 +33,8 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
     },
   });
   if (!page) return jsonError("Página não encontrada", 404);
-  return Response.json({ page });
+  const leadWebhookSecret = await ensureLeadWebhookSecret(page.id, page.leadWebhookSecret);
+  return Response.json({ page: { ...page, leadWebhookSecret } });
 }
 
 export async function PUT(request: NextRequest, ctx: Ctx) {
@@ -77,6 +79,10 @@ export async function PUT(request: NextRequest, ctx: Ctx) {
       ctaLabel: body.ctaLabel != null ? String(body.ctaLabel) : current.ctaLabel,
       ctaUrl: body.ctaUrl != null ? String(body.ctaUrl) : current.ctaUrl,
       customHtml: body.customHtml != null ? String(body.customHtml) : current.customHtml,
+      leadWebhookSecret:
+        typeof body.leadWebhookSecret === "string" && body.leadWebhookSecret.trim()
+          ? body.leadWebhookSecret.trim()
+          : current.leadWebhookSecret || (await ensureLeadWebhookSecret(current.id, current.leadWebhookSecret)),
       agent: {
         upsert: {
           create: {

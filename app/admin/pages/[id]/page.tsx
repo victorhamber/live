@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { PageEditor } from "@/components/admin/PageEditor";
 import { dropOrphanAgentReplies } from "@/lib/scripted-replies";
+import { ensureLeadWebhookSecret } from "@/lib/leads";
 
 export default async function EditPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -19,5 +20,6 @@ export default async function EditPage({ params }: { params: Promise<{ id: strin
     },
   });
   if (!page) notFound();
-  return <PageEditor initial={page} />;
+  const leadWebhookSecret = await ensureLeadWebhookSecret(page.id, page.leadWebhookSecret);
+  return <PageEditor initial={{ ...page, leadWebhookSecret }} />;
 }

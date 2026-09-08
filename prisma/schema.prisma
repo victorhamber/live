@@ -37,6 +37,7 @@ model Page {
   ctaLabel       String   @default("")
   ctaUrl         String   @default("")
   customHtml     String   @default("")
+  leadWebhookSecret String @default("")
   createdAt      DateTime @default(now())
   updatedAt      DateTime @updatedAt
 
