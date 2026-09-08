@@ -300,16 +300,6 @@ html, body { margin: 0; background: var(--bg); color: var(--text); font-family: 
   border-radius: 12px;
   padding: 16px;
 }
-.tpl-classroom .video-title::before {
-  content: "Material da aula";
-  display: block;
-  color: #f0c75e;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .08em;
-  text-transform: uppercase;
-  margin-bottom: 8px;
-}
 .tpl-classroom .desc-box { background: #0a1c30; border: 1px solid #1e3a57; cursor: default; }
 .tpl-classroom .chat-side {
   height: auto;
