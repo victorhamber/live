@@ -164,7 +164,7 @@ function ctaHtml(page: CustomPageInput) {
 function chatHtml(page: CustomPageInput) {
   const views = page.viewersBase.toLocaleString("pt-BR");
   return `
-<link rel="stylesheet" href="/live.css?v=6" />
+<link rel="stylesheet" href="/live.css?v=7" />
 <div class="chat-side" style="position:static;height:min(70vh,560px);max-width:420px">
   <div class="chat-header"><span class="live-dot"></span> Chat <span class="chat-viewers-count">(<span id="chat-viewers">${views}</span>)</span></div>
   <div class="chat-messages" id="chat-messages"></div>

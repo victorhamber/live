@@ -70,7 +70,7 @@ export default async function LivePage({ params }: Props) {
 
   return (
     <>
-      <link rel="stylesheet" href="/live.css?v=6" />
+      <link rel="stylesheet" href="/live.css?v=7" />
       <div className={`live-root tpl-${tpl.id}`} id="live-root" data-template={tpl.id}>
         <div className="topbar">
           <a className="yt-logo" href="#">
@@ -86,13 +86,6 @@ export default async function LivePage({ params }: Props) {
             )}
           </div>
         </div>
-
-        {tpl.stageLabel ? (
-          <div className="stage-banner">
-            <span>{tpl.stageLabel}</span>
-            <strong>{page.videoTitle || page.title}</strong>
-          </div>
-        ) : null}
 
         <div className="main-wrap">
           <div className="video-side">
