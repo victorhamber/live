@@ -336,7 +336,7 @@
   function cleanClaimParams() {
     try {
       const u = new URL(location.href);
-      ["s", "lead", "email", "name", "nome", "first_name", "last_name"].forEach((k) => u.searchParams.delete(k));
+      ["s", "lead", "email", "name", "nome", "fullname", "first_name", "last_name", "fn", "ln"].forEach((k) => u.searchParams.delete(k));
       history.replaceState({}, "", u.pathname + u.search + u.hash);
     } catch (e) {}
   }
@@ -345,7 +345,12 @@
     const q = new URLSearchParams(location.search);
     const token = (q.get("s") || q.get("lead") || "").trim();
     const email = (q.get("email") || "").trim();
-    const name = (q.get("name") || q.get("nome") || [q.get("first_name"), q.get("last_name")].filter(Boolean).join(" ")).trim();
+    const name = (
+      q.get("name") ||
+      q.get("nome") ||
+      q.get("fullname") ||
+      [q.get("first_name") || q.get("fn"), q.get("last_name") || q.get("ln")].filter(Boolean).join(" ")
+    ).trim();
     if (!token && !(email && name)) return;
     try {
       const res = await fetch("/api/p/" + encodeURIComponent(cfg.slug) + "/session", {

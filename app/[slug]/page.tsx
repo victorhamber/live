@@ -222,7 +222,7 @@ export default async function LivePage({ params, searchParams }: Props) {
           __html: `window.__LIVE__=${JSON.stringify(config)};`,
         }}
       />
-      <script src="/live.js?v=11" defer />
+      <script src="/live.js?v=12" defer />
     </>
   );
 }

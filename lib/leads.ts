@@ -61,15 +61,23 @@ function pick(map: Record<string, unknown>, keys: string[]) {
   return "";
 }
 
+function prettyName(name: string) {
+  const trimmed = name.trim().replace(/\s+/g, " ");
+  if (!trimmed) return "";
+  if (/[A-ZÁÉÍÓÚÂÊÔÃÕÇ]/.test(trimmed)) return trimmed;
+  return trimmed.replace(/\S+/g, (word) => word.charAt(0).toUpperCase() + word.slice(1));
+}
+
 export function parseLeadPayload(input: unknown) {
   const map = flatten(input);
   const email = pick(map, ["email", "e-mail", "e_mail", "mail", "email_address", "emailaddress"]).toLowerCase();
-  const first = pick(map, ["first_name", "firstname", "primeiro_nome", "nome"]);
-  const last = pick(map, ["last_name", "lastname", "sobrenome"]);
-  const name =
-    pick(map, ["full_name", "fullname", "nome_completo", "nome"]) ||
-    [first, last].filter(Boolean).join(" ").trim() ||
-    pick(map, ["name"]);
+  const first = pick(map, ["first_name", "firstname", "primeiro_nome", "primeironome", "fn"]);
+  const last = pick(map, ["last_name", "lastname", "sobrenome", "ultimonome", "ln"]);
+  const name = prettyName(
+    pick(map, ["full_name", "fullname", "nome_completo", "nomecompleto", "nome"]) ||
+      [first, last].filter(Boolean).join(" ").trim() ||
+      pick(map, ["name"])
+  );
   return { email, name };
 }
 

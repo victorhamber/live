@@ -138,6 +138,12 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
   }, [initial.id]);
 
   const payload = useMemo(() => form, [form]);
+  const webhookUrl = origin
+    ? `${origin}/api/p/${form.slug}/lead?secret=${encodeURIComponent(form.leadWebhookSecret)}`
+    : `/api/p/${form.slug}/lead?secret=`;
+  const thankYouUrl = origin
+    ? `${origin}/${form.slug}?email={{email}}&name={{name}}`
+    : `/${form.slug}?email={{email}}&name={{name}}`;
 
   async function save(e?: FormEvent) {
     e?.preventDefault();
@@ -509,15 +515,21 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <label className="grid gap-1 text-sm">Viewers base<input type="number" className={fieldClass()} value={form.viewersBase} onChange={(e) => set("viewersBase", Number(e.target.value))} /></label>
             <label className="grid gap-1 text-sm">Nota do chat<input className={fieldClass()} value={form.chatNote} onChange={(e) => set("chatNote", e.target.value)} /></label>
             <div className="rounded-xl border border-[#2a2f3a] p-4">
-              <p className="font-medium">Login automático por captura</p>
+              <p className="font-medium">Login automático pela Trajettu</p>
               <p className="mt-1 text-sm text-[#9aa0a6]">
-                O formulário do anúncio continua enviando os dados para o Meta. Configure um webhook extra para esta live: quando a pessoa se cadastrar, ela já entra logada e não precisa informar nome e e-mail de novo para comentar.
+                O formulário de captura da Trajettu continua mandando o lead pra Meta CAPI. Acrescente esta live como webhook extra e redirecione a pessoa pra sala já identificada.
               </p>
+              <ol className="mt-3 list-decimal space-y-1 pl-5 text-sm text-[#9aa0a6]">
+                <li>No painel Trajettu, abra o site → <strong className="text-[#e5e7eb]">Formulários</strong> → o formulário do anúncio.</li>
+                <li>Em <strong className="text-[#e5e7eb]">Webhooks (Opcional)</strong>, cole a URL abaixo (já vai com o segredo).</li>
+                <li>Em ação pós-cadastro, escolha <strong className="text-[#e5e7eb]">Redirecionar</strong> e cole a URL de obrigado.</li>
+                <li>Salve o formulário e copie de novo o HTML com integração.</li>
+              </ol>
               <label className="mt-3 grid gap-1 text-sm">
-                URL do webhook
+                URL do webhook (cole na Trajettu)
                 <div className="flex gap-2">
-                  <input className={fieldClass()} readOnly value={origin ? `${origin}/api/p/${form.slug}/lead` : `/api/p/${form.slug}/lead`} />
-                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(`${origin}/api/p/${form.slug}/lead`)}>
+                  <input className={fieldClass()} readOnly value={webhookUrl} />
+                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(webhookUrl)}>
                     Copiar
                   </button>
                 </div>
@@ -532,28 +544,22 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
                 </div>
               </label>
               <label className="mt-3 grid gap-1 text-sm">
-                URL de obrigado / redirect da live
+                URL de redirecionamento na Trajettu
                 <div className="flex gap-2">
-                  <input
-                    className={fieldClass()}
-                    readOnly
-                    value={origin ? `${origin}/${form.slug}?email={{email}}&name={{name}}` : `/${form.slug}?email={{email}}&name={{name}}`}
-                  />
-                  <button
-                    type="button"
-                    className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm"
-                    onClick={() => copyText(`${origin}/${form.slug}?email={{email}}&name={{name}}`)}
-                  >
+                  <input className={fieldClass()} readOnly value={thankYouUrl} />
+                  <button type="button" className="shrink-0 rounded-lg border border-[#2a2f3a] px-3 text-sm" onClick={() => copyText(thankYouUrl)}>
                     Copiar
                   </button>
                 </div>
               </label>
               <p className="mt-3 text-sm text-[#9aa0a6]">
-                Envie POST ou GET com nome e e-mail. Autentique com <code>Authorization: Bearer</code>, <code>X-Webhook-Secret</code> ou <code>?secret=</code>. A resposta traz <code>loginUrl</code> para redirecionar a pessoa já logada. Se o formulário usar outras tags (<code>{"{{nome}}"}</code>, <code>{"{email}"}</code>), ajuste a URL de obrigado.
+                A Trajettu envia POST JSON com <code>fn</code>, <code>ln</code>, <code>email</code> e <code>fields.fullname</code>. Não precisa de header de autorização: o segredo vai na própria URL. O Meta continua sendo disparado pela Trajettu.
               </p>
               <pre className="mt-3 overflow-auto rounded-lg bg-[#0f1115] p-3 text-xs text-[#d1d5db]">{`{
-  "name": "Maria Silva",
-  "email": "maria@email.com"
+  "fn": "maria",
+  "ln": "silva",
+  "email": "maria@email.com",
+  "fields": { "fullname": "Maria Silva", "email": "maria@email.com" }
 }`}</pre>
             </div>
           </>
