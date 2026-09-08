@@ -28,7 +28,7 @@ export default async function PageStats({ params, searchParams }: Props) {
   const maxSeries = Math.max(1, ...stats.series.map((point) => point.count));
 
   return (
-    <div className="max-w-5xl">
+    <div className="w-full">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <p className="text-sm text-[#9aa0a6]">

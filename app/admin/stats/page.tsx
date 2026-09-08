@@ -18,7 +18,7 @@ export default async function StatsDashboard({ searchParams }: Props) {
   const maxSeries = Math.max(1, ...stats.series.map((point) => point.count));
 
   return (
-    <div className="max-w-6xl">
+    <div className="w-full">
       <div className="flex flex-wrap items-start justify-between gap-3">
         <div>
           <h1 className="text-2xl font-semibold">Dashboard</h1>
