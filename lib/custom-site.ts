@@ -222,7 +222,7 @@ function injectRuntime(html: string, page: CustomPageInput) {
     template: "custom",
     viewsLabel: tpl.viewsLabel,
   };
-  const snippet = `\n<script>window.__LIVE__=${JSON.stringify(config)};</script>\n<script src="/live.js?v=10" defer></script>\n`;
+  const snippet = `\n<script>window.__LIVE__=${JSON.stringify(config)};</script>\n<script src="/live.js?v=11" defer></script>\n`;
   if (/<\/body>/i.test(html)) return html.replace(/<\/body>/i, `${snippet}</body>`);
   return html + snippet;
 }

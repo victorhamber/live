@@ -268,6 +268,7 @@
 
   async function sendUserMsg() {
     if (sending) return;
+    if (claimReady) await claimReady;
     const input = $("chat-input");
     const text = input.value.trim();
     if (!text) return;
@@ -381,9 +382,10 @@
     }, 3800);
   }
 
+  let claimReady = null;
+
   async function init() {
-    await claimFromUrl();
-    await restoreSession();
+    claimReady = claimFromUrl().then(() => restoreSession());
     track("pageview");
     bindTracking();
     if ($("desc-box")) {
@@ -426,6 +428,7 @@
     setInterval(pollFeed, 3000);
     pollFeed();
     fluctuateViewers();
+    await claimReady;
   }
 
   window.addEventListener("DOMContentLoaded", init);
