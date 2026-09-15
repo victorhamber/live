@@ -399,7 +399,7 @@ export function PageEditor({ initial }: { initial: PagePayload }) {
             <label className="grid gap-1 text-sm">Título do vídeo<input className={fieldClass()} value={form.videoTitle} onChange={(e) => set("videoTitle", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Texto do botão (CTA)<input className={fieldClass()} value={form.ctaLabel} onChange={(e) => set("ctaLabel", e.target.value)} placeholder="Quero participar" /></label>
             <label className="grid gap-1 text-sm">URL do botão (CTA)<input className={fieldClass()} value={form.ctaUrl} onChange={(e) => set("ctaUrl", e.target.value)} placeholder="https://..." /></label>
-            <p className="text-xs text-[#9aa0a6]">Se a URL do CTA ficar vazia, o primeiro botão de ação do agente (com link) é usado na sala.</p>
+            <p className="text-xs text-[#9aa0a6]">O botão só aparece na sala se você preencher a URL. Ações do agente não criam esse botão.</p>
             <label className="grid gap-1 text-sm">Marca / logo<input className={fieldClass()} value={form.brandName} onChange={(e) => set("brandName", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Canal<input className={fieldClass()} value={form.channelName} onChange={(e) => set("channelName", e.target.value)} /></label>
             <label className="grid gap-1 text-sm">Subtítulo do canal<input className={fieldClass()} value={form.channelHandle} onChange={(e) => set("channelHandle", e.target.value)} /></label>

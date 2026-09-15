@@ -39,7 +39,7 @@ export default async function LivePage({ params, searchParams }: Props) {
   const { slug } = await params;
   const page = await db.page.findUnique({
     where: { slug },
-    include: { agent: true, actions: true },
+    include: { agent: true },
   });
   if (!page || !pageIsViewable(page)) notFound();
 
@@ -66,12 +66,9 @@ export default async function LivePage({ params, searchParams }: Props) {
     ? `/api/branding/logo?v=${settings.updatedAt.getTime()}`
     : "";
   const tpl = getPageTemplate(page.template);
-  const actionCta = page.actions.find((item) => item.url);
-  const cta = page.ctaUrl
-    ? { label: page.ctaLabel || "Quero participar", url: page.ctaUrl }
-    : actionCta
-      ? { label: actionCta.label || "Saiba mais", url: actionCta.url }
-      : null;
+  const cta = page.ctaUrl.trim()
+    ? { label: page.ctaLabel.trim() || "Quero participar", url: page.ctaUrl.trim() }
+    : null;
 
   const config = {
     slug: page.slug,

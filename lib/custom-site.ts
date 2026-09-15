@@ -154,10 +154,9 @@ function playerHtml(page: CustomPageInput) {
 }
 
 function ctaHtml(page: CustomPageInput) {
-  const action = page.actions?.find((item) => item.url);
-  const url = page.ctaUrl || action?.url;
+  const url = page.ctaUrl.trim();
   if (!url) return "";
-  const label = page.ctaLabel || action?.label || "Quero participar";
+  const label = page.ctaLabel.trim() || "Quero participar";
   return `<a class="live-cta" data-track-label="CTA" href="${url}" target="_blank" rel="noopener noreferrer">${escapeHtml(label)}</a>`;
 }
 
